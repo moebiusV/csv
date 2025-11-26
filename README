@@ -1,0 +1,73 @@
+csv - Unix-style commands for CSV files
+=======================================
+
+csv is a collection of Unix-style utilities for working with CSV files on a
+row basis rather than a line basis. This properly handles CSV files with
+quoted fields that may contain newlines or commas.
+
+Commands
+--------
+
+  * csv head - Display the first n data rows
+  * csv tail - Display the last n data rows
+  * csv wc   - Count rows, columns, and bytes
+  * csv cut  - Select specific fields by name
+
+Features
+--------
+
+  * Row-aware parsing: correctly handles quoted fields with embedded newlines
+  * Comment support: preserves leading # comment lines
+  * Consistent interface: -a flag adds header across all commands
+  * Pipeline friendly: reads from stdin when no file specified
+  * GNU-style options: familiar command-line interface
+
+Installation
+------------
+
+    make install
+
+Or to install to a custom location:
+
+    make install prefix=$HOME/.local
+
+Requirements
+------------
+
+  * Python 3.6 or later
+  * No external dependencies (uses only Python standard library)
+
+Usage Examples
+--------------
+
+    # Show first 5 data rows
+    csv head -5 data.csv
+
+    # Show last 3 rows with header
+    csv tail -3 -a data.csv
+
+    # Count data rows
+    csv wc -l data.csv
+
+    # Select specific columns
+    csv cut -f data.csv name email phone
+
+    # Pipeline: filter then select
+    csv head -10 -a data.csv | csv cut -a name city
+
+Documentation
+-------------
+
+See the man page for complete documentation:
+
+    man csv
+
+License
+-------
+
+See COPYING file for license information.
+
+Bug Reports
+-----------
+
+Report bugs to the maintainer.

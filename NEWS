@@ -1,0 +1,18 @@
+csv NEWS - History of user-visible changes
+
+Version 1.0.0 (November 2025)
+
+  * Initial release
+
+  * Commands:
+    - csv head: display first n rows of CSV file
+    - csv tail: display last n rows of CSV file
+    - csv wc: count rows, columns, and bytes
+    - csv cut: select fields by name
+
+  * Features:
+    - Row-aware CSV parsing (handles quoted fields with newlines)
+    - Comment line support (lines starting with #)
+    - Consistent -a flag to include header across all commands
+    - Pipeline support (stdin/stdout)
+    - GNU-style command-line options

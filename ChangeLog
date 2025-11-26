@@ -1,0 +1,24 @@
+ChangeLog for csv
+
+2025-11-25  David
+
+	* Version 1.0.0 released
+
+	* csv: Initial implementation with head, tail, wc, cut commands
+
+	* csv (head, tail): Add -a flag to include header and comment lines
+
+	* csv (wc): Add -a flag to include header in row count
+	  Without -a, only data rows are counted (excludes header)
+
+	* csv (cut): Add -a flag for header output, make -f optional
+	  When -f is omitted, reads from stdin
+
+	* csv: Add support for comment lines starting with # at file start
+	  Comment lines are preserved and output with header when -a is used
+
+	* csv: Add proper error handling for file not found, permission denied
+
+	* csv.1: Man page created
+
+	* Makefile: GNU-compliant makefile with install/uninstall targets
