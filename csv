@@ -1,0 +1,337 @@
+#!/usr/bin/env python3
+"""
+CSV Head/Tail/WC Tool - Unix-style head, tail, and wc commands for CSV files
+Usage:
+    csv head [number] [-a] <file> [file ...]
+    csv tail [number] [-a] <file> [file ...]
+    csv wc [-l] [-w] [-c] <file> [file ...]
+    
+Examples:
+    csv head myfile.csv                    # Show first 10 rows (without header)
+    csv head -1 myfile.csv                 # Show first row (without header)
+    csv head -10 myfile.csv                # Show first 10 rows (without header)
+    csv tail myfile.csv                    # Show last 10 rows (without header)
+    csv tail -1 myfile.csv                 # Show last row (without header)
+    csv tail -5 myfile.csv                 # Show last 5 rows (without header)
+    csv head -1 -a myfile.csv              # Show first row (with header)
+    csv tail -1 -a myfile.csv              # Show last row (with header)
+    csv head myfile.csv -a                 # Show first 10 rows (with header)
+    csv head file1.csv file2.csv           # Show first 10 rows of each file
+    csv head -5 -a file1.csv file2.csv     # Show first 5 rows (with header) of each file
+    csv wc myfile.csv                      # Count rows, columns, and bytes
+    csv wc -l myfile.csv                   # Count rows only
+    csv wc -w myfile.csv                   # Count columns only
+    csv wc -c myfile.csv                   # Count bytes only
+    csv wc -lw myfile.csv                  # Count rows and columns
+    csv wc file1.csv file2.csv file3.csv   # Count for multiple files with totals
+    
+Note: Options (-a for head/tail, -l/-w/-c for wc) must come before any filenames.
+      Once a filename is encountered, all remaining arguments are treated as filenames.
+"""
+
+import csv
+import sys
+from pathlib import Path
+
+
+def read_csv_rows(filename):
+    """Read all rows from a CSV file, preserving the structure."""
+    rows = []
+    with open(filename, 'r', newline='', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            rows.append(row)
+    return rows
+
+
+def write_csv_rows(rows):
+    """Write CSV rows to stdout."""
+    writer = csv.writer(sys.stdout)
+    for row in rows:
+        writer.writerow(row)
+
+
+def csv_head(filename, n, with_header=False):
+    """Show the first n rows of a CSV file (with header only if with_header is True)."""
+    rows = read_csv_rows(filename)
+    
+    if not rows:
+        return
+    
+    if with_header:
+        # Include header (first row) plus n data rows
+        if len(rows) <= 1:
+            write_csv_rows(rows)
+        else:
+            header = [rows[0]]
+            data_rows = rows[1:n+1]
+            write_csv_rows(header + data_rows)
+    else:
+        # Skip header, just show first n data rows
+        data_rows = rows[1:n+1] if len(rows) > 1 else []
+        write_csv_rows(data_rows)
+
+
+def csv_tail(filename, n, with_header=False):
+    """Show the last n rows of a CSV file (with header only if with_header is True)."""
+    rows = read_csv_rows(filename)
+    
+    if not rows:
+        return
+    
+    if with_header:
+        # Include header (first row) plus last n data rows
+        if len(rows) <= 1:
+            write_csv_rows(rows)
+        else:
+            header = [rows[0]]
+            data_rows = rows[-n:] if n < len(rows) else rows[1:]
+            write_csv_rows(header + data_rows)
+    else:
+        # Skip header, just show last n data rows
+        data_rows = rows[-n:] if len(rows) > 1 and n < len(rows) else rows[1:]
+        write_csv_rows(data_rows)
+
+
+def csv_wc(filename, show_rows=True, show_columns=True, show_bytes=True):
+    """Count bytes, columns, and rows in a CSV file (like wc for CSV)."""
+    # Get file size in bytes
+    file_size = Path(filename).stat().st_size
+    
+    # Read and count rows and columns
+    rows = read_csv_rows(filename)
+    
+    if not rows:
+        # Print zeros based on what's requested
+        output = ""
+        if show_rows:
+            output += "       0"
+        if show_columns:
+            output += "       0"
+        if show_bytes:
+            output += "       0"
+        print(f"{output} {filename}")
+        return (0, 0, 0) if show_rows and show_columns and show_bytes else None
+    
+    row_count = len(rows)
+    
+    # Count columns (from first row, assuming all rows have same number of columns)
+    column_count = len(rows[0]) if rows else 0
+    
+    # Build output string based on what's requested
+    output = ""
+    if show_rows:
+        output += f"{row_count:8}"
+    if show_columns:
+        output += f"{column_count:8}"
+    if show_bytes:
+        output += f"{file_size:8}"
+    
+    print(f"{output} {filename}")
+    
+    return row_count, column_count, file_size
+
+
+def main():
+    # Manual argument parsing to ensure options only before filenames
+    if len(sys.argv) < 2:
+        print("usage: csv {head,tail,wc} [number] [-a] <file> [file ...]", file=sys.stderr)
+        sys.exit(1)
+    
+    # Check for help
+    if '--help' in sys.argv or (len(sys.argv) > 1 and sys.argv[1] in ['-h', '--help']):
+        print("usage: csv {head,tail,wc} [options] <file> [file ...]")
+        print("\nCSV head/tail/wc utility")
+        print("\nPositional arguments:")
+        print("  {head,tail,wc}    Command to execute")
+        print("  file              CSV file(s) to process")
+        print("\nOptions for head/tail (must come before filenames):")
+        print("  number            Number of rows to display (default: 10)")
+        print("  -a, --add-header  Include header row in output")
+        print("\nOptions for wc (must come before filenames):")
+        print("  -l                Count rows only")
+        print("  -w                Count columns only")
+        print("  -c                Count bytes only")
+        print("  (combine options like -lw, -lwc, etc.)")
+        print("  (default: show all three if no options specified)")
+        print("\nOther options:")
+        print("  --help            Show this help message and exit")
+        sys.exit(0)
+    
+    # Get command
+    if len(sys.argv) < 2:
+        print("Error: No command specified", file=sys.stderr)
+        sys.exit(1)
+    
+    command = sys.argv[1]
+    if command not in ['head', 'tail', 'wc']:
+        print(f"Error: Invalid command '{command}'. Must be 'head', 'tail', or 'wc'", file=sys.stderr)
+        sys.exit(1)
+    
+    # Special handling for wc command - supports -l, -w, -c options
+    if command == 'wc':
+        if len(sys.argv) < 3:
+            print("Error: No file specified", file=sys.stderr)
+            sys.exit(1)
+        
+        # Parse wc options
+        i = 2
+        show_rows = False    # -l
+        show_columns = False # -w
+        show_bytes = False   # -c
+        filenames = []
+        
+        # Parse options before filenames
+        while i < len(sys.argv):
+            arg = sys.argv[i]
+            
+            if arg.startswith('-') and arg != '-':
+                # Parse options
+                if arg in ['-l']:
+                    show_rows = True
+                    i += 1
+                elif arg in ['-w']:
+                    show_columns = True
+                    i += 1
+                elif arg in ['-c']:
+                    show_bytes = True
+                    i += 1
+                elif arg.startswith('-') and len(arg) > 1:
+                    # Could be combined options like -lwc
+                    for char in arg[1:]:
+                        if char == 'l':
+                            show_rows = True
+                        elif char == 'w':
+                            show_columns = True
+                        elif char == 'c':
+                            show_bytes = True
+                        else:
+                            print(f"Error: Unknown option '-{char}'", file=sys.stderr)
+                            sys.exit(1)
+                    i += 1
+                else:
+                    print(f"Error: Unknown option '{arg}'", file=sys.stderr)
+                    sys.exit(1)
+            else:
+                # First filename - everything from here is a filename
+                filenames = sys.argv[i:]
+                break
+        
+        # If no options specified, show all (default behavior)
+        if not show_rows and not show_columns and not show_bytes:
+            show_rows = True
+            show_columns = True
+            show_bytes = True
+        
+        if not filenames:
+            print("Error: No file specified", file=sys.stderr)
+            sys.exit(1)
+        
+        # Check all files exist first
+        for filename in filenames:
+            if not Path(filename).is_file():
+                print(f"Error: File '{filename}' not found", file=sys.stderr)
+                sys.exit(1)
+        
+        # Process each file and track totals
+        total_rows = 0
+        total_cols = 0
+        total_bytes = 0
+        
+        try:
+            for filename in filenames:
+                result = csv_wc(filename, show_rows, show_columns, show_bytes)
+                if result:
+                    rows, cols, bytes_count = result
+                    total_rows += rows
+                    total_cols += cols
+                    total_bytes += bytes_count
+            
+            # Print totals if multiple files
+            if len(filenames) > 1:
+                output = ""
+                if show_rows:
+                    output += f"{total_rows:8}"
+                if show_columns:
+                    output += f"{total_cols:8}"
+                if show_bytes:
+                    output += f"{total_bytes:8}"
+                print(f"{output} total")
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        
+        sys.exit(0)
+    
+    # Parse remaining arguments for head/tail
+    i = 2
+    n = 10  # default
+    with_header = False
+    filenames = []
+    
+    # Parse options and number before filenames
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        
+        # Once we hit a filename (doesn't start with -), all remaining args are filenames
+        if not arg.startswith('-'):
+            # Check if it's a number
+            try:
+                if arg.startswith('-'):
+                    n = abs(int(arg))
+                else:
+                    n = int(arg)
+                i += 1
+                continue
+            except ValueError:
+                # It's a filename - everything from here on is a filename
+                filenames = sys.argv[i:]
+                break
+        
+        # Parse options (only before filenames)
+        if arg in ['-a', '--add-header']:
+            with_header = True
+            i += 1
+        elif arg.startswith('-') and arg not in ['-a', '--add-header']:
+            # Could be a negative number
+            try:
+                n = abs(int(arg))
+                i += 1
+            except ValueError:
+                print(f"Error: Unknown option '{arg}'", file=sys.stderr)
+                sys.exit(1)
+        else:
+            # First filename - everything from here is a filename
+            filenames = sys.argv[i:]
+            break
+    
+    if not filenames:
+        print("Error: No file specified", file=sys.stderr)
+        sys.exit(1)
+    
+    # Process each file
+    for idx, filename in enumerate(filenames):
+        # Check if file exists
+        if not Path(filename).is_file():
+            print(f"Error: File '{filename}' not found", file=sys.stderr)
+            sys.exit(1)
+        
+        # Print filename header if multiple files
+        if len(filenames) > 1:
+            if idx > 0:
+                print()  # Blank line between files
+            print(f"==> {filename} <==")
+        
+        # Execute the appropriate command
+        try:
+            if command == 'head':
+                csv_head(filename, n, with_header)
+            elif command == 'tail':
+                csv_tail(filename, n, with_header)
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()
