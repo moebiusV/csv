@@ -2,20 +2,31 @@
 """
 CSV Tool - Unix-style commands for CSV files
 Usage:
-    csv head [number] [-a] [file]
-    csv tail [number] [-a] [file]
+    csv head [-N|+N] [-a] [file]
+    csv tail [-N|+N] [-a] [file]
     csv wc [-l] [-w] [-c] [file]
     csv cut [-a] [-f <file>] field1 field2 ...
     
 When no filename is given (or '-' is used), reads from stdin.
 
+For head:
+    -N  Show first N data rows (default: 10)
+    +N  Show all but the last N data rows
+
+For tail:
+    -N  Show last N data rows (default: 10)
+    +N  Start from row N and print to end (1-indexed, like POSIX tail)
+
 Examples:
-    csv head -1 myfile.csv             # Show first row (without header)
-    csv head -5 -a myfile.csv          # Show first 5 rows with header
-    cat myfile.csv | csv head -1       # Same, but from stdin
-    csv cut -f myfile.csv name age     # Select 'name' and 'age' columns
-    csv cut -a -f myfile.csv name age  # Same, with header
-    cat data.csv | csv cut name age    # Select columns from stdin
+    csv head -5 myfile.csv              # First 5 data rows
+    csv head +3 myfile.csv              # All but last 3 data rows
+    csv tail -5 myfile.csv              # Last 5 data rows
+    csv tail +3 myfile.csv              # Skip first 2 data rows, print rest
+    csv head -5 -a myfile.csv           # First 5 rows with header
+    cat myfile.csv | csv head -1        # First row from stdin
+    csv cut -f myfile.csv name age      # Select 'name' and 'age' columns
+    csv cut -a -f myfile.csv name age   # Same, with header
+    cat data.csv | csv cut name age     # Select columns from stdin
 """
 
 import csv
@@ -90,47 +101,102 @@ def write_csv_rows(rows, comment_lines=None):
         writer.writerow(row)
 
 
-def csv_head(filename, n, with_header=False):
-    """Show the first n rows of a CSV file (with header only if with_header is True)."""
+def csv_head(filename, n, with_header=False, from_start=False):
+    """Show the first n rows of a CSV file (with header only if with_header is True).
+    
+    If from_start is True (triggered by +N), show all but the last N rows.
+    """
     comment_lines, rows = read_csv_rows(filename)
     
     if not rows:
         return
     
-    if with_header:
-        # Include comments, header (first row), plus first n data rows
-        if len(rows) <= 1:
-            write_csv_rows(rows, comment_lines)
+    if from_start:
+        # +N means show all but the last N data rows
+        if with_header:
+            if len(rows) <= 1:
+                write_csv_rows(rows, comment_lines)
+            else:
+                header = [rows[0]]
+                data_rows = rows[1:]
+                if n < len(data_rows):
+                    data_rows = data_rows[:-n]
+                else:
+                    data_rows = []
+                write_csv_rows(header + data_rows, comment_lines)
         else:
-            header = [rows[0]]
-            data_rows = rows[1:n+1]
-            write_csv_rows(header + data_rows, comment_lines)
+            if len(rows) > 1:
+                data_rows = rows[1:]
+                if n < len(data_rows):
+                    data_rows = data_rows[:-n]
+                else:
+                    data_rows = []
+                write_csv_rows(data_rows)
     else:
-        # Skip header, just show first n data rows
-        if len(rows) > 1:
-            data_rows = rows[1:n+1]
+        # Normal behavior: show first N rows
+        if with_header:
+            # Include comments, header (first row), plus first n data rows
+            if len(rows) <= 1:
+                write_csv_rows(rows, comment_lines)
+            else:
+                header = [rows[0]]
+                data_rows = rows[1:n+1]
+                write_csv_rows(header + data_rows, comment_lines)
+        else:
+            # Skip header, just show first n data rows
+            if len(rows) > 1:
+                data_rows = rows[1:n+1]
+                write_csv_rows(data_rows)
+
+
+def csv_tail(filename, n, with_header=False, from_start=False):
+    """Show the last n rows of a CSV file (with header only if with_header is True).
+    
+    If from_start is True (triggered by +N), start from row N and print to end.
+    Row numbering starts at 1, so +1 means all rows, +2 skips first data row, etc.
+    """
+    comment_lines, rows = read_csv_rows(filename)
+    
+    if not rows:
+        return
+    
+    if from_start:
+        # +N means start from row N (1-indexed) and print to end
+        # +1 = all data rows, +2 = skip first data row, etc.
+        start_idx = n - 1  # Convert to 0-indexed
+        if with_header:
+            if len(rows) <= 1:
+                write_csv_rows(rows, comment_lines)
+            else:
+                header = [rows[0]]
+                data_rows = rows[1:]
+                if start_idx < len(data_rows):
+                    data_rows = data_rows[start_idx:]
+                else:
+                    data_rows = []
+                write_csv_rows(header + data_rows, comment_lines)
+        else:
+            if len(rows) > 1:
+                data_rows = rows[1:]
+                if start_idx < len(data_rows):
+                    data_rows = data_rows[start_idx:]
+                else:
+                    data_rows = []
+                write_csv_rows(data_rows)
+    else:
+        # Normal behavior: show last N rows
+        if with_header:
+            # Include comments, header (first row), plus last n data rows
+            if len(rows) <= 1:
+                write_csv_rows(rows, comment_lines)
+            else:
+                header = [rows[0]]
+                data_rows = rows[-n:] if n < len(rows) else rows[1:]
+                write_csv_rows(header + data_rows, comment_lines)
+        else:
+            # Skip header, just show last n data rows
+            data_rows = rows[-n:] if len(rows) > 1 and n < len(rows) else rows[1:]
             write_csv_rows(data_rows)
-
-
-def csv_tail(filename, n, with_header=False):
-    """Show the last n rows of a CSV file (with header only if with_header is True)."""
-    comment_lines, rows = read_csv_rows(filename)
-    
-    if not rows:
-        return
-    
-    if with_header:
-        # Include comments, header (first row), plus last n data rows
-        if len(rows) <= 1:
-            write_csv_rows(rows, comment_lines)
-        else:
-            header = [rows[0]]
-            data_rows = rows[-n:] if n < len(rows) else rows[1:]
-            write_csv_rows(header + data_rows, comment_lines)
-    else:
-        # Skip header, just show last n data rows
-        data_rows = rows[-n:] if len(rows) > 1 and n < len(rows) else rows[1:]
-        write_csv_rows(data_rows)
 
 
 def csv_wc(filename, show_rows=True, show_columns=True, show_bytes=True, with_header=False):
@@ -348,11 +414,11 @@ def main():
         print("  wc      Count rows, columns, and bytes")
         print("  cut     Select specific fields")
         print("\nFor head/tail:")
-        print("  csv head [number] [-a] [file]")
-        print("  csv tail [number] [-a] [file]")
+        print("  csv head [-N] [-a] [file]    Show first N data rows (default: 10)")
+        print("  csv head [+N] [-a] [file]    Show all but last N data rows")
+        print("  csv tail [-N] [-a] [file]    Show last N data rows (default: 10)")
+        print("  csv tail [+N] [-a] [file]    Start from row N and print to end (1-indexed)")
         print("  -a, --add-header  Include header row (and comments) in output")
-        print("  number            Number of rows (default: 10)")
-        print("  file              CSV file (default: stdin)")
         print("\nFor wc:")
         print("  csv wc [-l] [-w] [-c] [-a] [file]")
         print("  -l                Count rows only")
@@ -371,39 +437,51 @@ def main():
         # Parse head arguments
         n = 10  # default
         with_header = False
+        from_start = False
         filename = None
         
         # Parse arguments - filename is the non-option argument
         for arg in args:
             if arg == '-a' or arg == '--add-header':
                 with_header = True
+            elif arg.startswith('+') and len(arg) > 1 and arg[1:].isdigit():
+                # +N means all but last N rows
+                n = int(arg[1:])
+                from_start = True
             elif arg.startswith('-') and len(arg) > 1 and arg[1:].isdigit():
                 n = int(arg[1:])
+                from_start = False
             elif arg == '-':
                 filename = '-'
             elif not arg.startswith('-'):
                 filename = arg
         
-        csv_head(filename, n, with_header)
+        csv_head(filename, n, with_header, from_start)
     
     elif command == 'tail':
         # Parse tail arguments
         n = 10  # default
         with_header = False
+        from_start = False
         filename = None
         
         # Parse arguments - filename is the non-option argument
         for arg in args:
             if arg == '-a' or arg == '--add-header':
                 with_header = True
+            elif arg.startswith('+') and len(arg) > 1 and arg[1:].isdigit():
+                # +N means start from row N (1-indexed)
+                n = int(arg[1:])
+                from_start = True
             elif arg.startswith('-') and len(arg) > 1 and arg[1:].isdigit():
                 n = int(arg[1:])
+                from_start = False
             elif arg == '-':
                 filename = '-'
             elif not arg.startswith('-'):
                 filename = arg
         
-        csv_tail(filename, n, with_header)
+        csv_tail(filename, n, with_header, from_start)
     
     elif command == 'wc':
         # Parse wc options
