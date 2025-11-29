@@ -1,5 +1,20 @@
 ChangeLog for csv
 
+2025-11-29  David
+
+	* Version 1.1.0
+
+	* csv (head): Add +n option to display all but last n data rows
+	  Example: csv head +3 shows all rows except the last 3
+
+	* csv (tail): Add +n option to start output at row n (1-indexed)
+	  Example: csv tail +3 skips first 2 rows, outputs from row 3 to end
+	  This follows POSIX tail convention where +n means "starting from"
+
+	* csv.1: Updated man page with +number documentation and examples
+
+	* README, NEWS: Updated documentation
+
 2025-11-25  David
 
 	* Version 1.0.0 released

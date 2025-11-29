@@ -1,5 +1,14 @@
 csv NEWS - History of user-visible changes
 
+Version 1.1.0 (November 2025)
+
+  * New features:
+    - csv head +n: display all but the last n data rows
+    - csv tail +n: start output at row n and continue to end (1-indexed)
+
+  * These options follow POSIX tail conventions where +n means "starting
+    from line n" rather than "last n lines".
+
 Version 1.0.0 (November 2025)
 
   * Initial release

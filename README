@@ -8,8 +8,8 @@ quoted fields that may contain newlines or commas.
 Commands
 --------
 
-  * csv head - Display the first n data rows
-  * csv tail - Display the last n data rows
+  * csv head - Display the first n data rows (or all but last n with +n)
+  * csv tail - Display the last n data rows (or from row n to end with +n)
   * csv wc   - Count rows, columns, and bytes
   * csv cut  - Select specific fields by name
 
@@ -20,7 +20,7 @@ Features
   * Comment support: preserves leading # comment lines
   * Consistent interface: -a flag adds header across all commands
   * Pipeline friendly: reads from stdin when no file specified
-  * GNU-style options: familiar command-line interface
+  * POSIX-style options: supports both -n and +n for head/tail
 
 Installation
 ------------
@@ -43,8 +43,14 @@ Usage Examples
     # Show first 5 data rows
     csv head -5 data.csv
 
+    # Show all but last 3 data rows
+    csv head +3 data.csv
+
     # Show last 3 rows with header
     csv tail -3 -a data.csv
+
+    # Skip first 2 data rows, show rest (start at row 3)
+    csv tail +3 data.csv
 
     # Count data rows
     csv wc -l data.csv
