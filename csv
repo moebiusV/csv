@@ -33,6 +33,7 @@ Examples:
     csv cut -a -f myfile.csv name age   # Same, with header
     cat data.csv | csv cut name age     # Select columns from stdin
     csv pick -f data.csv 1 3 5          # Select rows 1, 3, and 5
+    csv pick -a -f data.csv 1 3 5       # Same, with header
     cat data.csv | csv pick 2 4         # Select rows 2 and 4 from stdin
 """
 
@@ -314,10 +315,11 @@ def csv_cut(filename, field_names, with_header=False):
         writer.writerow(selected)
 
 
-def csv_pick(filename, row_numbers):
+def csv_pick(filename, row_numbers, with_header=False):
     """Select specific data rows by number (1-indexed).
     
-    Header is always preserved in output.
+    By default, outputs only the selected data rows. Use with_header=True
+    to include the header row (and any comment lines) in output.
     """
     comment_lines, rows = read_csv_rows(filename)
     
@@ -326,13 +328,15 @@ def csv_pick(filename, row_numbers):
     
     data_count = len(rows) - 1  # Exclude header
     
-    # Output comments and header (always preserved)
-    if comment_lines:
-        for line in comment_lines:
-            print(line)
-    
-    writer = csv.writer(sys.stdout)
-    writer.writerow(rows[0])  # Header
+    # Output comments and header only if -a flag
+    if with_header:
+        if comment_lines:
+            for line in comment_lines:
+                print(line)
+        writer = csv.writer(sys.stdout)
+        writer.writerow(rows[0])  # Header
+    else:
+        writer = csv.writer(sys.stdout)
     
     # Output selected data rows
     for row_num in row_numbers:
@@ -456,10 +460,10 @@ def main():
         print("  -f <file>         Specify input file (default: stdin)")
         print("  Selects and outputs specified fields from the CSV")
         print("\nFor pick:")
-        print("  csv pick [-f <file>] row1 row2 ...")
+        print("  csv pick [-a] [-f <file>] row1 row2 ...")
+        print("  -a, --add-header  Include header row (and comments) in output")
         print("  -f <file>         Specify input file (default: stdin)")
         print("  Selects specific data rows by number (1-indexed)")
-        print("  Header is always preserved in output")
         sys.exit(0)
     
     if command == 'head':
@@ -553,10 +557,13 @@ def main():
         # Parse pick arguments
         filename, remaining = parse_file_option(args)
         
-        # Parse row numbers
+        # Check for -a flag and parse row numbers
+        with_header = False
         row_numbers = []
         for arg in remaining:
-            if arg.isdigit():
+            if arg == '-a' or arg == '--add-header':
+                with_header = True
+            elif arg.isdigit():
                 row_numbers.append(int(arg))
             elif arg.startswith('-') and arg != '-':
                 print(f"csv pick: invalid option -- '{arg}'", file=sys.stderr)
@@ -567,10 +574,10 @@ def main():
         
         if not row_numbers:
             print("csv pick: no row numbers specified", file=sys.stderr)
-            print("usage: csv pick [-f <file>] row1 row2 ...", file=sys.stderr)
+            print("usage: csv pick [-a] [-f <file>] row1 row2 ...", file=sys.stderr)
             sys.exit(1)
         
-        csv_pick(filename, row_numbers)
+        csv_pick(filename, row_numbers, with_header)
     
     else:
         print(f"csv: unknown command '{command}'", file=sys.stderr)
