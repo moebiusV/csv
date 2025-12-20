@@ -118,8 +118,8 @@ Display only the column count.
 Display only the byte count.
 .TP
 .BR \-a ", " \-\-add\-header
-Include the header row in the row count. By default, only data rows are
-counted (the header is excluded).
+Include the header row in the row count. If the CSV file begins with comment
+lines (starting with #), these are also included in the count.
 .PP
 Options may be combined (e.g.,
 .BR \-lw ).
@@ -179,8 +179,7 @@ commands to be used in pipelines.
 .SH STDOUT
 Output is written to standard output in CSV format. The
 .B wc
-command outputs counts in a format similar to
-.BR wc (1).
+command outputs counts in the format "Rows: N  Columns: N  Bytes: N".
 .SH EXIT STATUS
 .TP
 .B 0

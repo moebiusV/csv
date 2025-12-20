@@ -2,10 +2,15 @@ csv NEWS - History of user-visible changes
 
 Version 1.2.0 (December 2025)
 
-  * New command: csv pick [-f file] row1 row2 ...
+  * New command: csv pick [-a] [-f file] row1 row2 ...
     - Select specific data rows by number (1-indexed)
-    - Header is always preserved in output
+    - Use -a to include header (and comments) in output
     - Supports stdin input when -f is not specified
+
+  * Changed wc output format to "Rows: N  Columns: N  Bytes: N"
+
+  * The -a flag now consistently includes comment lines with the header
+    across all commands (head, tail, wc, cut, pick)
 
   * Added --version (-V) option to display version information
 

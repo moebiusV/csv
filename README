@@ -14,7 +14,7 @@ Commands
                                    +N starts from row N to end
   csv wc [-l] [-w] [-c] [-a] [file]  Count rows, columns, and bytes
   csv cut [-a] [-f file] field...  Select specific columns by name
-  csv pick [-f file] row...        Select specific rows by number
+  csv pick [-a] [-f file] row...   Select specific rows by number
 
 Options
 -------
@@ -41,6 +41,7 @@ Examples
   csv cut -f data.csv name email    Select name and email columns
   csv cut -a -f data.csv name       Same, with header included
   csv pick -f data.csv 1 3 5        Select rows 1, 3, and 5
+  csv pick -a -f data.csv 1 3 5     Same, with header
   cat data.csv | csv pick 2 4       Select rows from stdin
 
 Installation

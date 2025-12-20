@@ -212,8 +212,8 @@ def csv_tail(filename, n, with_header=False, from_start=False):
 def csv_wc(filename, show_rows=True, show_columns=True, show_bytes=True, with_header=False):
     """Count bytes, columns, and rows in a CSV file (like wc for CSV).
     
-    By default, counts only data rows (excludes header). Use with_header=True
-    to include the header in the row count.
+    By default, counts only data rows (excludes header and comments). 
+    Use with_header=True to include the header and comment lines in the row count.
     """
     # Handle stdin vs file differently for byte count
     if filename is None or filename == '-':
@@ -241,10 +241,12 @@ def csv_wc(filename, show_rows=True, show_columns=True, show_bytes=True, with_he
         content = source.read()
         lines = content.splitlines(keepends=True)
         
-        # Skip leading comment lines
+        # Count and skip leading comment lines
+        comment_count = 0
         data_start = 0
         for i, line in enumerate(lines):
             if line.lstrip().startswith('#'):
+                comment_count += 1
                 data_start = i + 1
             else:
                 break
@@ -255,22 +257,24 @@ def csv_wc(filename, show_rows=True, show_columns=True, show_bytes=True, with_he
         # Count columns from header (first row)
         num_columns = len(rows[0]) if rows else 0
         
-        # Count rows (excluding header by default)
+        # Count rows
         if with_header:
-            num_rows = len(rows)
+            # Include comment lines + header + data rows
+            num_rows = comment_count + len(rows)
         else:
+            # Data rows only (exclude comments and header)
             num_rows = len(rows) - 1 if rows else 0
         
         # Build output
         output_parts = []
         if show_rows:
-            output_parts.append(f"{num_rows:8d}")
+            output_parts.append(f"Rows: {num_rows}")
         if show_columns:
-            output_parts.append(f"{num_columns:8d}")
+            output_parts.append(f"Columns: {num_columns}")
         if show_bytes:
-            output_parts.append(f"{file_size:8d}")
+            output_parts.append(f"Bytes: {file_size}")
         
-        print(f"{''.join(output_parts)} {display_name}")
+        print("  ".join(output_parts))
     finally:
         if filename is not None and filename != '-':
             source.close()
@@ -452,7 +456,7 @@ def main():
         print("  -l                Count rows only")
         print("  -w                Count columns only")
         print("  -c                Count bytes only")
-        print("  -a, --add-header  Include header in row count")
+        print("  -a, --add-header  Include header (and comments) in row count")
         print("  (default: show all three counts, exclude header from row count)")
         print("\nFor cut:")
         print("  csv cut [-a] [-f <file>] field1 field2 ...")

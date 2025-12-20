@@ -3,14 +3,20 @@
 	* Version 1.2.0 released
 
 	* csv: Added 'pick' subcommand for selecting specific rows by number
-	- Syntax: csv pick [-f file] row1 row2 ...
+	- Syntax: csv pick [-a] [-f file] row1 row2 ...
 	- Rows are 1-indexed (row 1 = first data row)
-	- Header is always preserved in output
+	- Use -a to include header and comments in output
 	- Supports stdin when -f not specified
+
+	* csv: Changed wc output format to "Rows: N  Columns: N  Bytes: N"
+
+	* csv: The -a flag now includes comment lines in wc row count
 
 	* csv: Added --version (-V) option
 
-	* csv.1: Updated man page with pick command documentation
+	* csv.1: Updated man page with pick command and wc output format
+
+	* README, NEWS: Updated documentation
 
 2025-11-29  David
 
