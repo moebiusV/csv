@@ -6,6 +6,7 @@ Usage:
     csv tail [-N|+N] [-a] [file]
     csv wc [-l] [-w] [-c] [file]
     csv cut [-a] [-f <file>] field1 field2 ...
+    csv pick [-f <file>] row1 row2 ...
     
 When no filename is given (or '-' is used), reads from stdin.
 
@@ -17,6 +18,10 @@ For tail:
     -N  Show last N data rows (default: 10)
     +N  Start from row N and print to end (1-indexed, like POSIX tail)
 
+For pick:
+    Select specific data rows by number (1-indexed)
+    Header is always preserved in output
+
 Examples:
     csv head -5 myfile.csv              # First 5 data rows
     csv head +3 myfile.csv              # All but last 3 data rows
@@ -27,7 +32,11 @@ Examples:
     csv cut -f myfile.csv name age      # Select 'name' and 'age' columns
     csv cut -a -f myfile.csv name age   # Same, with header
     cat data.csv | csv cut name age     # Select columns from stdin
+    csv pick -f data.csv 1 3 5          # Select rows 1, 3, and 5
+    cat data.csv | csv pick 2 4         # Select rows 2 and 4 from stdin
 """
+
+VERSION = "1.2.0"
 
 import csv
 import sys
@@ -227,10 +236,11 @@ def csv_wc(filename, show_rows=True, show_columns=True, show_bytes=True, with_he
         display_name = filename
     
     try:
-        # Read content and extract leading comments
+        # Read and parse CSV
         content = source.read()
         lines = content.splitlines(keepends=True)
         
+        # Skip leading comment lines
         data_start = 0
         for i, line in enumerate(lines):
             if line.lstrip().startswith('#'):
@@ -239,74 +249,49 @@ def csv_wc(filename, show_rows=True, show_columns=True, show_bytes=True, with_he
                 break
         
         remaining_content = ''.join(lines[data_start:])
-        rows = []
-        reader = csv.reader(remaining_content.splitlines())
-        for row in reader:
-            rows.append(row)
+        rows = list(csv.reader(remaining_content.splitlines()))
+        
+        # Count columns from header (first row)
+        num_columns = len(rows[0]) if rows else 0
+        
+        # Count rows (excluding header by default)
+        if with_header:
+            num_rows = len(rows)
+        else:
+            num_rows = len(rows) - 1 if rows else 0
+        
+        # Build output
+        output_parts = []
+        if show_rows:
+            output_parts.append(f"{num_rows:8d}")
+        if show_columns:
+            output_parts.append(f"{num_columns:8d}")
+        if show_bytes:
+            output_parts.append(f"{file_size:8d}")
+        
+        print(f"{''.join(output_parts)} {display_name}")
     finally:
         if filename is not None and filename != '-':
             source.close()
-    
-    if not rows:
-        output = ""
-        if show_rows:
-            output += "       0"
-        if show_columns:
-            output += "       0"
-        if show_bytes:
-            output += "       0"
-        print(f"{output} {display_name}")
-        return (0, 0, 0)
-    
-    # Count data rows only (exclude header) unless with_header is True
-    if with_header:
-        row_count = len(rows)
-    else:
-        row_count = len(rows) - 1 if len(rows) > 1 else 0
-    
-    column_count = len(rows[0]) if rows else 0
-    
-    output = ""
-    if show_rows:
-        output += f"{row_count:8}"
-    if show_columns:
-        output += f"{column_count:8}"
-    if show_bytes:
-        output += f"{file_size:8}"
-    
-    print(f"{output} {display_name}")
-    
-    return row_count, column_count, file_size
 
 
 def csv_cut(filename, field_names, with_header=False):
-    """Select specific fields from a CSV file and output them."""
+    """Select specific fields from a CSV file by name."""
     comment_lines, rows = read_csv_rows(filename)
     
     if not rows:
         return
     
-    # First row is the header - find column indices for requested fields
+    # Get header and find column indices
     header = rows[0]
-    header_map = {name: idx for idx, name in enumerate(header)}
-    
-    # Find indices for requested fields
     indices = []
-    missing_fields = []
-    for field in field_names:
-        if field in header_map:
-            indices.append(header_map[field])
-        else:
-            missing_fields.append(field)
-    
-    if missing_fields:
-        print(f"csv cut: unknown field(s): {', '.join(missing_fields)}", file=sys.stderr)
-        print(f"Available fields: {', '.join(header)}", file=sys.stderr)
-        sys.exit(1)
-    
-    if not indices:
-        print("csv cut: no fields specified", file=sys.stderr)
-        sys.exit(1)
+    for name in field_names:
+        try:
+            indices.append(header.index(name))
+        except ValueError:
+            print(f"csv cut: unknown field: {name}", file=sys.stderr)
+            print(f"Available fields: {', '.join(header)}", file=sys.stderr)
+            sys.exit(1)
     
     # Output comment lines first (as part of header) only if -a flag
     if with_header and comment_lines:
@@ -327,6 +312,37 @@ def csv_cut(filename, field_names, with_header=False):
             else:
                 selected.append('')  # Handle rows with fewer columns
         writer.writerow(selected)
+
+
+def csv_pick(filename, row_numbers):
+    """Select specific data rows by number (1-indexed).
+    
+    Header is always preserved in output.
+    """
+    comment_lines, rows = read_csv_rows(filename)
+    
+    if not rows:
+        return
+    
+    data_count = len(rows) - 1  # Exclude header
+    
+    # Output comments and header (always preserved)
+    if comment_lines:
+        for line in comment_lines:
+            print(line)
+    
+    writer = csv.writer(sys.stdout)
+    writer.writerow(rows[0])  # Header
+    
+    # Output selected data rows
+    for row_num in row_numbers:
+        if row_num < 1:
+            print(f"csv pick: invalid row number: {row_num}", file=sys.stderr)
+            continue
+        if row_num > data_count:
+            print(f"csv pick: row {row_num} out of range (have {data_count} data rows)", file=sys.stderr)
+            continue
+        writer.writerow(rows[row_num])  # row_num maps directly since header is rows[0]
 
 
 def parse_wc_options(args):
@@ -391,28 +407,36 @@ def parse_file_option(args):
 
 def main():
     if len(sys.argv) < 2:
-        print("usage: csv {head,tail,wc,cut} [options] [file|fields...]", file=sys.stderr)
-        print("\nCommands:")
-        print("  head    Show first n rows of CSV file")
-        print("  tail    Show last n rows of CSV file")
-        print("  wc      Count rows, columns, and bytes")
-        print("  cut     Select specific fields from CSV")
-        print("\nUse 'csv <command> --help' for more information on a command.")
-        print("\nWhen no file is specified, reads from stdin. Use '-' for explicit stdin.")
+        print("usage: csv {head,tail,wc,cut,pick} [options] [file|fields...]", file=sys.stderr)
+        print("\nCommands:", file=sys.stderr)
+        print("  head    Show first n rows of CSV file", file=sys.stderr)
+        print("  tail    Show last n rows of CSV file", file=sys.stderr)
+        print("  wc      Count rows, columns, and bytes", file=sys.stderr)
+        print("  cut     Select specific fields from CSV", file=sys.stderr)
+        print("  pick    Select specific rows by number", file=sys.stderr)
+        print("\nUse 'csv <command> --help' for more information on a command.", file=sys.stderr)
+        print("\nWhen no file is specified, reads from stdin. Use '-' for explicit stdin.", file=sys.stderr)
         sys.exit(1)
     
     command = sys.argv[1]
     args = sys.argv[2:]
     
+    # Check for version
+    if command in ['-V', '--version']:
+        print(f"csv {VERSION}")
+        sys.exit(0)
+    
     # Check for help
     if command in ['-h', '--help'] or '--help' in args:
-        print("usage: csv {head,tail,wc,cut} [options] [file|fields...]")
+        print("usage: csv {head,tail,wc,cut,pick} [options] [file|fields...]")
         print("\nCSV utility - Unix-style commands for CSV files")
+        print(f"Version {VERSION}")
         print("\nCommands:")
         print("  head    Show first n rows")
         print("  tail    Show last n rows")
         print("  wc      Count rows, columns, and bytes")
         print("  cut     Select specific fields")
+        print("  pick    Select specific rows by number")
         print("\nFor head/tail:")
         print("  csv head [-N] [-a] [file]    Show first N data rows (default: 10)")
         print("  csv head [+N] [-a] [file]    Show all but last N data rows")
@@ -429,8 +453,13 @@ def main():
         print("\nFor cut:")
         print("  csv cut [-a] [-f <file>] field1 field2 ...")
         print("  -a, --add-header  Include header row (and comments) in output")
-        print("  -f <file>         Specify input file (default: stdin, use '-' for explicit stdin)")
+        print("  -f <file>         Specify input file (default: stdin)")
         print("  Selects and outputs specified fields from the CSV")
+        print("\nFor pick:")
+        print("  csv pick [-f <file>] row1 row2 ...")
+        print("  -f <file>         Specify input file (default: stdin)")
+        print("  Selects specific data rows by number (1-indexed)")
+        print("  Header is always preserved in output")
         sys.exit(0)
     
     if command == 'head':
@@ -520,9 +549,32 @@ def main():
         
         csv_cut(filename, field_names, with_header)
     
+    elif command == 'pick':
+        # Parse pick arguments
+        filename, remaining = parse_file_option(args)
+        
+        # Parse row numbers
+        row_numbers = []
+        for arg in remaining:
+            if arg.isdigit():
+                row_numbers.append(int(arg))
+            elif arg.startswith('-') and arg != '-':
+                print(f"csv pick: invalid option -- '{arg}'", file=sys.stderr)
+                sys.exit(1)
+            else:
+                print(f"csv pick: invalid row number: {arg}", file=sys.stderr)
+                sys.exit(1)
+        
+        if not row_numbers:
+            print("csv pick: no row numbers specified", file=sys.stderr)
+            print("usage: csv pick [-f <file>] row1 row2 ...", file=sys.stderr)
+            sys.exit(1)
+        
+        csv_pick(filename, row_numbers)
+    
     else:
         print(f"csv: unknown command '{command}'", file=sys.stderr)
-        print("usage: csv {head,tail,wc,cut} [options] [file|fields...]", file=sys.stderr)
+        print("usage: csv {head,tail,wc,cut,pick} [options] [file|fields...]", file=sys.stderr)
         sys.exit(1)
 
 

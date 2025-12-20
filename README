@@ -1,79 +1,57 @@
 csv - Unix-style commands for CSV files
 =======================================
 
-csv is a collection of Unix-style utilities for working with CSV files on a
-row basis rather than a line basis. This properly handles CSV files with
-quoted fields that may contain newlines or commas.
+csv is a collection of Unix-style utilities for working with CSV files
+on a row basis rather than a line basis. This properly handles CSV files
+with quoted fields that may contain newlines or commas.
 
 Commands
 --------
 
-  * csv head - Display the first n data rows (or all but last n with +n)
-  * csv tail - Display the last n data rows (or from row n to end with +n)
-  * csv wc   - Count rows, columns, and bytes
-  * csv cut  - Select specific fields by name
+  csv head [-N|+N] [-a] [file]     Show first N data rows (default: 10)
+                                   +N shows all but last N rows
+  csv tail [-N|+N] [-a] [file]     Show last N data rows (default: 10)
+                                   +N starts from row N to end
+  csv wc [-l] [-w] [-c] [-a] [file]  Count rows, columns, and bytes
+  csv cut [-a] [-f file] field...  Select specific columns by name
+  csv pick [-f file] row...        Select specific rows by number
 
-Features
+Options
+-------
+
+  -a, --add-header    Include header row (and comments) in output
+  -f <file>           Specify input file (for cut and pick)
+  -l                  Count rows only (wc)
+  -w                  Count columns only (wc)
+  -c                  Count bytes only (wc)
+  -N                  Number of rows (head/tail)
+  +N                  POSIX-style offset (head/tail)
+
+When no file is specified, reads from standard input.
+
+Examples
 --------
 
-  * Row-aware parsing: correctly handles quoted fields with embedded newlines
-  * Comment support: preserves leading # comment lines
-  * Consistent interface: -a flag adds header across all commands
-  * Pipeline friendly: reads from stdin when no file specified
-  * POSIX-style options: supports both -n and +n for head/tail
+  csv head -5 data.csv              First 5 data rows
+  csv head -5 -a data.csv           First 5 rows with header
+  csv tail +3 data.csv              Skip first 2 rows, show rest
+  csv head +5 data.csv              All but last 5 rows
+  csv wc data.csv                   Count rows, columns, bytes
+  csv wc -l data.csv                Count data rows only
+  csv cut -f data.csv name email    Select name and email columns
+  csv cut -a -f data.csv name       Same, with header included
+  csv pick -f data.csv 1 3 5        Select rows 1, 3, and 5
+  cat data.csv | csv pick 2 4       Select rows from stdin
 
 Installation
 ------------
 
-    make install
+  sudo make install                 Install to /usr/local
+  make install prefix=$HOME/.local  Install to home directory
 
-Or to install to a custom location:
-
-    make install prefix=$HOME/.local
-
-Requirements
-------------
-
-  * Python 3.6 or later
-  * No external dependencies (uses only Python standard library)
-
-Usage Examples
---------------
-
-    # Show first 5 data rows
-    csv head -5 data.csv
-
-    # Show all but last 3 data rows
-    csv head +3 data.csv
-
-    # Show last 3 rows with header
-    csv tail -3 -a data.csv
-
-    # Skip first 2 data rows, show rest (start at row 3)
-    csv tail +3 data.csv
-
-    # Count data rows
-    csv wc -l data.csv
-
-    # Select specific columns
-    csv cut -f data.csv name email phone
-
-    # Pipeline: filter then select
-    csv head -10 -a data.csv | csv cut -a name city
-
-Documentation
--------------
-
-See the man page for complete documentation:
-
-    man csv
+Requirements: Python 3.6 or later (uses only standard library)
 
 License
 -------
 
-See COPYING file for license information.
-
-Bug Reports
------------
-
-Report bugs to the maintainer.
+MIT License. See COPYING for details.

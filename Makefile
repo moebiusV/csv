@@ -1,81 +1,86 @@
-# Makefile for csv - Unix-style commands for CSV files
-# GNU Makefile conventions compliant
+# Makefile for csv - Unix-style CSV utilities
+#
+# Usage:
+#   make install          Install to system (default: /usr/local)
+#   make install prefix=$HOME/.local   Install to home directory
+#   make uninstall        Remove installed files
+#   make dist             Create distribution tarball
+#   make clean            Remove build artifacts
+#   make help             Show this help
 
-PACKAGE = csv
-VERSION = 1.0.0
+PROGNAME = csv
+VERSION = 1.2.0
 
-# Installation directories (GNU standard)
-prefix = /usr/local
-exec_prefix = $(prefix)
-bindir = $(exec_prefix)/bin
-datarootdir = $(prefix)/share
-mandir = $(datarootdir)/man
-man1dir = $(mandir)/man1
-docdir = $(datarootdir)/doc/$(PACKAGE)
+# Installation directories (GNU Coding Standards)
+prefix ?= /usr/local
+exec_prefix ?= $(prefix)
+bindir ?= $(exec_prefix)/bin
+datarootdir ?= $(prefix)/share
+mandir ?= $(datarootdir)/man
+man1dir ?= $(mandir)/man1
+docdir ?= $(datarootdir)/doc/$(PROGNAME)
 
-# Install programs
-INSTALL = install
-INSTALL_PROGRAM = $(INSTALL) -m 755
-INSTALL_DATA = $(INSTALL) -m 644
+# For staged installs (packaging)
+DESTDIR ?=
 
-# Files
-SCRIPTS = csv
-MANPAGES = csv.1
-DOCS = README NEWS AUTHORS COPYING ChangeLog
+# Source files
+SCRIPT = csv
+MANPAGE = csv.1
+DOCS = README NEWS ChangeLog COPYING AUTHORS
 
-.PHONY: all install install-bin install-man install-doc uninstall clean distclean dist help
+.PHONY: all install install-bin install-man install-doc uninstall dist clean help
 
 all:
-	@echo "Nothing to build. Run 'make install' to install."
+	@echo "Nothing to build (Python script)."
+	@echo "Run 'make install' to install, or 'make help' for options."
 
 install: install-bin install-man install-doc
 
 install-bin:
-	$(INSTALL) -d $(DESTDIR)$(bindir)
-	$(INSTALL_PROGRAM) $(SCRIPTS) $(DESTDIR)$(bindir)/
+	install -d $(DESTDIR)$(bindir)
+	install -m 755 $(SCRIPT) $(DESTDIR)$(bindir)/$(PROGNAME)
 
 install-man:
-	$(INSTALL) -d $(DESTDIR)$(man1dir)
-	$(INSTALL_DATA) $(MANPAGES) $(DESTDIR)$(man1dir)/
+	install -d $(DESTDIR)$(man1dir)
+	install -m 644 $(MANPAGE) $(DESTDIR)$(man1dir)/$(PROGNAME).1
 
 install-doc:
-	$(INSTALL) -d $(DESTDIR)$(docdir)
-	$(INSTALL_DATA) $(DOCS) $(DESTDIR)$(docdir)/
+	install -d $(DESTDIR)$(docdir)
+	install -m 644 $(DOCS) $(DESTDIR)$(docdir)/
 
 uninstall:
-	rm -f $(DESTDIR)$(bindir)/csv
-	rm -f $(DESTDIR)$(man1dir)/csv.1
+	rm -f $(DESTDIR)$(bindir)/$(PROGNAME)
+	rm -f $(DESTDIR)$(man1dir)/$(PROGNAME).1
 	rm -rf $(DESTDIR)$(docdir)
 
-clean:
-	@echo "Nothing to clean."
-
-distclean: clean
-	rm -f config.status config.log
-
 dist:
-	mkdir -p $(PACKAGE)-$(VERSION)
-	cp $(SCRIPTS) $(MANPAGES) $(DOCS) Makefile $(PACKAGE)-$(VERSION)/
-	tar -czf $(PACKAGE)-$(VERSION).tar.gz $(PACKAGE)-$(VERSION)
-	rm -rf $(PACKAGE)-$(VERSION)
-	@echo "Created $(PACKAGE)-$(VERSION).tar.gz"
+	mkdir -p $(PROGNAME)-$(VERSION)
+	cp $(SCRIPT) $(MANPAGE) Makefile $(DOCS) $(PROGNAME)-$(VERSION)/
+	tar czvf $(PROGNAME)-$(VERSION).tar.gz $(PROGNAME)-$(VERSION)
+	rm -rf $(PROGNAME)-$(VERSION)
+	@echo "Created $(PROGNAME)-$(VERSION).tar.gz"
+
+clean:
+	rm -rf $(PROGNAME)-$(VERSION) $(PROGNAME)-$(VERSION).tar.gz
 
 help:
+	@echo "csv $(VERSION) - Unix-style CSV utilities"
+	@echo ""
 	@echo "Targets:"
-	@echo "  all          - Default target (nothing to build)"
-	@echo "  install      - Install script, man page, and documentation"
-	@echo "  install-bin  - Install only the script"
-	@echo "  install-man  - Install only the man page"
-	@echo "  install-doc  - Install only the documentation"
-	@echo "  uninstall    - Remove installed files"
-	@echo "  dist         - Create distribution tarball"
-	@echo "  clean        - Clean build artifacts"
-	@echo "  help         - Show this help"
+	@echo "  install       Install program, man page, and documentation"
+	@echo "  install-bin   Install only the program"
+	@echo "  install-man   Install only the man page"
+	@echo "  install-doc   Install only documentation"
+	@echo "  uninstall     Remove all installed files"
+	@echo "  dist          Create distribution tarball"
+	@echo "  clean         Remove build artifacts"
+	@echo "  help          Show this help"
 	@echo ""
 	@echo "Variables:"
-	@echo "  prefix       - Installation prefix (default: /usr/local)"
-	@echo "  DESTDIR      - Staging directory for package building"
+	@echo "  prefix        Installation prefix (default: /usr/local)"
+	@echo "  DESTDIR       Staging directory for packaging"
 	@echo ""
-	@echo "Example:"
-	@echo "  sudo make install"
-	@echo "  make install prefix=\$$HOME/.local"
+	@echo "Examples:"
+	@echo "  sudo make install                    Install system-wide"
+	@echo "  make install prefix=\$$HOME/.local    Install to home directory"
+	@echo "  make DESTDIR=/tmp/pkg install        Stage for packaging"

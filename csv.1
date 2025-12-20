@@ -1,15 +1,15 @@
 .\" Man page for csv
-.TH CSV 1 "November 2025" "csv 1.0" "User Commands"
+.TH CSV 1 "December 2025" "csv 1.2.0" "User Commands"
 .SH NAME
 csv \- Unix-style commands for CSV files
 .SH SYNOPSIS
 .B csv head
-.RB [ \-\fInumber\fP ]
+.RB [ \-\fInumber\fP | +\fInumber\fP ]
 .RB [ \-a ]
 .RI [ file ]
 .br
 .B csv tail
-.RB [ \-\fInumber\fP ]
+.RB [ \-\fInumber\fP | +\fInumber\fP ]
 .RB [ \-a ]
 .RI [ file ]
 .br
@@ -24,6 +24,12 @@ csv \- Unix-style commands for CSV files
 .IR file ]
 .I field
 .RI [ field ...]
+.br
+.B csv pick
+.RB [ \-f
+.IR file ]
+.I row
+.RI [ row ...]
 .SH DESCRIPTION
 .B csv
 is a collection of Unix-style utilities for working with CSV files on a
@@ -41,12 +47,20 @@ option is used.
 .B head
 Display the first
 .I n
-data rows of a CSV file (default: 10).
+data rows of a CSV file (default: 10). With
+.BI + number\fR,
+display all but the last
+.I number
+data rows.
 .TP
 .B tail
 Display the last
 .I n
-data rows of a CSV file (default: 10).
+data rows of a CSV file (default: 10). With
+.BI + number\fR,
+start output at data row
+.I number
+and continue to the end of the file (rows are numbered starting at 1).
 .TP
 .B wc
 Count and display the number of rows, columns, and bytes in a CSV file.
@@ -56,11 +70,38 @@ but operates on CSV structure.
 .TP
 .B cut
 Select and display specific fields (columns) from a CSV file by field name.
+.TP
+.B pick
+Select and display specific data rows by row number (1-indexed).
+Header is always preserved in output.
 .SH OPTIONS
 .SS Options for head and tail
 .TP
 .BI \- number
-Specify the number of rows to display. Default is 10.
+Specify the number of rows to display. Default is 10. For
+.BR head ,
+display the first
+.I number
+rows. For
+.BR tail ,
+display the last
+.I number
+rows.
+.TP
+.BI + number
+For
+.BR head ,
+display all but the last
+.I number
+data rows. For
+.BR tail ,
+start output at data row
+.I number
+(1-indexed) and continue to the end of the file. Thus
+.B csv tail +1
+outputs all data rows, and
+.B csv tail +3
+skips the first two data rows.
 .TP
 .BR \-a ", " \-\-add\-header
 Include the header row in output. If the CSV file begins with comment
@@ -94,6 +135,13 @@ Specify the input file. Use
 .B \-
 to explicitly read from standard input. If not specified, reads from
 standard input.
+.SS Options for pick
+.TP
+.BI \-f " file"
+Specify the input file. Use
+.B \-
+to explicitly read from standard input. If not specified, reads from
+standard input.
 .SH OPERANDS
 .TP
 .I file
@@ -111,6 +159,13 @@ For the
 .B cut
 command, one or more field names (column headers) to select from the CSV file.
 Fields are output in the order specified.
+.TP
+.I row
+For the
+.B pick
+command, one or more row numbers (1-indexed) to select from the CSV file.
+Rows are output in the order specified. Row 1 is the first data row
+(after the header).
 .SH STDIN
 When no file operand is specified (or when
 .B \-
@@ -153,6 +208,22 @@ Display the last 3 rows with header:
 .RS
 .nf
 csv tail \-3 \-a data.csv
+.fi
+.RE
+.PP
+Skip the first 2 data rows and display the rest (start at row 3):
+.PP
+.RS
+.nf
+csv tail +3 data.csv
+.fi
+.RE
+.PP
+Display all but the last 5 data rows:
+.PP
+.RS
+.nf
+csv head +5 data.csv
 .fi
 .RE
 .PP
@@ -212,6 +283,22 @@ cat data.csv | csv head \-1 \-a
 .fi
 .RE
 .PP
+Select specific rows by number (with header):
+.PP
+.RS
+.nf
+csv pick \-f data.csv 1 3 5
+.fi
+.RE
+.PP
+Select rows from standard input:
+.PP
+.RS
+.nf
+cat data.csv | csv pick 2 4 6
+.fi
+.RE
+.PP
 Pipeline example \(em select columns then show first 5 rows:
 .PP
 .RS
@@ -242,7 +329,9 @@ and
 .B tail
 output only data rows (excluding the header). Use
 .B \-a
-to include the header in output.
+to include the header in output. The
+.B pick
+command always includes the header in output.
 .SS Comment Lines
 Lines starting with
 .B #

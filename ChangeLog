@@ -1,39 +1,40 @@
-ChangeLog for csv
+2025-12-20  David
+
+	* Version 1.2.0 released
+
+	* csv: Added 'pick' subcommand for selecting specific rows by number
+	- Syntax: csv pick [-f file] row1 row2 ...
+	- Rows are 1-indexed (row 1 = first data row)
+	- Header is always preserved in output
+	- Supports stdin when -f not specified
+
+	* csv: Added --version (-V) option
+
+	* csv.1: Updated man page with pick command documentation
 
 2025-11-29  David
 
-	* Version 1.1.0
+	* Version 1.1.0 released
 
-	* csv (head): Add +n option to display all but last n data rows
-	  Example: csv head +3 shows all rows except the last 3
+	* csv: Added +N options for head and tail commands
+	- csv tail +N: Start from row N (1-indexed) and print to end
+	- csv head +N: Show all but last N data rows
+	- Follows POSIX tail convention
 
-	* csv (tail): Add +n option to start output at row n (1-indexed)
-	  Example: csv tail +3 skips first 2 rows, outputs from row 3 to end
-	  This follows POSIX tail convention where +n means "starting from"
+	* csv.1: Updated man page with +N option documentation
 
-	* csv.1: Updated man page with +number documentation and examples
+	* README: Updated with +N usage examples
 
-	* README, NEWS: Updated documentation
-
-2025-11-25  David
+2025-11-26  David
 
 	* Version 1.0.0 released
 
-	* csv: Initial implementation with head, tail, wc, cut commands
+	* Initial implementation with head, tail, wc, cut commands
 
-	* csv (head, tail): Add -a flag to include header and comment lines
+	* Row-aware CSV parsing using Python csv module
 
-	* csv (wc): Add -a flag to include header in row count
-	  Without -a, only data rows are counted (excludes header)
+	* Support for comment lines starting with #
 
-	* csv (cut): Add -a flag for header output, make -f optional
-	  When -f is omitted, reads from stdin
+	* stdin/stdout support for pipeline usage
 
-	* csv: Add support for comment lines starting with # at file start
-	  Comment lines are preserved and output with header when -a is used
-
-	* csv: Add proper error handling for file not found, permission denied
-
-	* csv.1: Man page created
-
-	* Makefile: GNU-compliant makefile with install/uninstall targets
+	* GNU-compliant packaging with Makefile
