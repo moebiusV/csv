@@ -6,13 +6,13 @@ Written in pure Python (standard library only), it's fast to install and depende
 
 ## Key Features
 
-- **Familiar subcommands**: `head`, `tail`, `wc`, `pick` (arbitrary row selection), `cut` (with `-x` for exclusion), `grep` (column-specific regex search with `-v` invert), `sort` (multi-key, numeric `-n`, reverse `-r`).
-- **Smart header handling**: The first non-comment row is automatically treated as the header. Use `-a` (or `--add-header`) to include it in output — consistent across all subcommands.
-- **Leading comment preservation**: Lines starting with `#` at the file start are treated as metadata/comments and preserved when `-a` is used (ideal for real-world exports with descriptions).
-- **Delimiter autodetection**: Automatically detects common delimiters (comma, tab, pipe, etc.) — no flags needed.
-- **Pipe-friendly design**: All subcommands read from stdin (or file) and output valid CSV to stdout. Complex logic (e.g., AND across fields) via simple pipelines: `csv grep pattern1 col1 | csv grep pattern2 col2`.
-- **Unique tricks**: View just headers/comments with `csv head -a -1 file.csv`. Default to all fields for `sort` or `grep` when none specified.
-- **POSIX-inspired syntax**: `head`/`tail` support `-N` and `+N` offsets like GNU coreutils.
+* **Familiar subcommands**: `head`, `tail`, `wc`, `pick` (arbitrary row selection), `cut` (with `-x` for exclusion), `grep` (column-specific regex search with `-v` invert), `sort` (multi-key, numeric `-n`, reverse `-r`).
+* **Smart header handling**: The first non-comment row is automatically treated as the header. Use `-a` (or `--add-header`) to include it in output — consistent across all subcommands.
+* **Leading comment preservation**: Lines starting with `#` at the file start are treated as metadata/comments and preserved when `-a` is used (ideal for real-world exports with descriptions).
+* **Delimiter autodetection**: Automatically detects common delimiters (comma, tab, pipe, semicolon, colon) — no flags needed.
+* **Pipe-friendly design**: All subcommands read from stdin (or file) and output valid CSV to stdout. Complex logic (e.g., AND across fields) via simple pipelines: `csv grep pattern1 col1 | csv grep pattern2 col2`.
+* **Unique tricks**: View just headers/comments with `csv head -a -0 file.csv`. Default to all fields for `sort` or `grep` when none specified.
+* **POSIX-inspired syntax**: `head`/`tail` support `-N` and `+N` offsets like GNU coreutils.
 
 ## Why csv?
 
@@ -21,17 +21,6 @@ Traditional Unix tools break on CSVs with quotes or newlines. `csv` fixes that w
 Its niche: **quick, composable shell workflows** for inspecting, slicing, filtering, and sorting CSVs — without learning a new DSL or installing heavy suites. Perfect for scripts, debugging datasets, or handling exports with metadata comments (often discarded by other tools).
 
 No bloat: no stats, joins, or format conversions — just reliable basics done right.
-
-## Comparison to Other Tools
-
-| Tool       | Style                                | Strengths                                      | vs. csv                                                | Best For                          |
-|------------|--------------------------------------|------------------------------------------------|--------------------------------------------------------|-----------------------------------|
-| **csv** (this tool) | Single binary, exact POSIX subcommands | Intuitive naming, best header/comment handling, delimiter autodetect, pipeable multi-field filters, `pick` rows | Lacks pretty-printing/stats; subcommand shadowing possible | Everyday shell pipelines          |
-| **csvkit** | Separate tools (`csvcut`, `csvgrep`, `csvlook`) | Pretty tables, stats, conversions, SQL-like ops | More sprawl, discards comments by default             | Data exploration/journalism       |
-| **Miller (mlr)** | Single binary, prefixed verbs (`mlr cut`) | Powerful DSL, aggregations, reshaping, multi-format, fast | Steeper curve, no direct row-index `pick`              | Advanced munging/devops           |
-| **qsv**    | Single binary, custom verbs          | Blazing fast (Rust), indexing, pretty tables   | Less familiar names                                    | Large files/performance           |
-
-`csv` shines for users who love Unix tools and want CSV safety without changing habits.
 
 ## Installation
 
@@ -45,30 +34,83 @@ make install prefix=$HOME/.local
 
 Requires Python 3.6+ (standard library only).
 
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `csv head [-N\|+N] [-a] [file]` | Show first N rows (default: 10). `+N` shows all but last N rows. |
+| `csv tail [-N\|+N] [-a] [file]` | Show last N rows (default: 10). `+N` starts from row N. |
+| `csv wc [-l] [-w] [-c] [-a] [file]` | Count rows, columns, and/or bytes. |
+| `csv cut [-a] [-x] [-f file] field...` | Select (or exclude with `-x`) specific columns. |
+| `csv pick [-a] [-f file] row...` | Select specific rows by number (1-indexed). |
+| `csv grep [-a] [-v] [-f file] regex [field...]` | Filter rows by regex. No field = search all. |
+| `csv sort [-a] [-n] [-r] [-f file] [field...]` | Sort by field(s). No field = sort by all. |
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `-a, --add-header` | Include header row (and comments) in output |
+| `-f <file>` | Specify input file (default: stdin) |
+| `-x, --exclude` | Exclude fields instead of selecting (cut) |
+| `-v, --invert` | Invert match (grep) |
+| `-n, --numeric` | Numeric sort (sort) |
+| `-r, --reverse` | Reverse/descending order (sort) |
+| `-l, -w, -c` | Count rows, columns, bytes only (wc) |
+| `-N` | Number of rows (head/tail) |
+| `+N` | POSIX-style offset (head/tail) |
+
 ## Examples
 
 ```bash
 # First 10 rows with header + comments
 csv head -10 -a data.csv
 
+# View just headers and comments (no data rows)
+csv head -0 -a data.csv
+
 # All columns except junk ones
 csv cut -a -x password temp_id data.csv
+
+# Filter rows where name starts with "A"
+csv grep "^A" name data.csv
 
 # Filter with AND (via pipe)
 csv grep "^A" name data.csv | csv grep "York" city
 
+# Search all fields for "error"
+csv grep "error" data.csv
+
 # Multi-key sort (numeric descending)
 csv sort -a -n -r age city data.csv
 
-# Search all fields
-csv grep "error"
+# Select specific rows
+csv pick -a -f data.csv 1 5 10
 
-# Pipeline: cut then head
+# Pipeline: cut columns then show first 5
 csv cut -a name email data.csv | csv head -5 -a
 
-# View just headers/comments
-csv head -a -1 data.csv
+# Works with tab-delimited files too
+csv head -5 -a data.tsv
+
+# Pipe-delimited? No problem
+csv cut -a name data.psv
 ```
+
+## Comparison to Other Tools
+
+| Tool | Style | Strengths | vs. csv | Best For |
+|------|-------|-----------|---------|----------|
+| **csv** (this tool) | Single binary, exact POSIX subcommands | Intuitive naming, best header/comment handling, delimiter autodetect, pipeable multi-field filters, `pick` rows | Lacks pretty-printing/stats; subcommand shadowing possible | Everyday shell pipelines |
+| **csvkit** | Separate tools (`csvcut`, `csvgrep`, `csvlook`) | Pretty tables, stats, conversions, SQL-like ops | More sprawl, discards comments by default | Data exploration/journalism |
+| **Miller (mlr)** | Single binary, prefixed verbs (`mlr cut`) | Powerful DSL, aggregations, reshaping, multi-format, fast | Steeper curve, no direct row-index `pick` | Advanced munging/devops |
+| **qsv** | Single binary, custom verbs | Blazing fast (Rust), indexing, pretty tables | Less familiar names | Large files/performance |
+
+`csv` shines for users who love Unix tools and want CSV safety without changing habits.
+
+## Version
+
+1.2.0
 
 ## License
 
