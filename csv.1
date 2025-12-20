@@ -31,6 +31,22 @@ csv \- Unix-style commands for CSV files
 .IR file ]
 .I row
 .RI [ row ...]
+.br
+.B csv grep
+.RB [ \-a ]
+.RB [ \-v ]
+.RB [ \-f
+.IR file ]
+.I regex
+.RI [ field ...]
+.br
+.B csv sort
+.RB [ \-a ]
+.RB [ \-n ]
+.RB [ \-r ]
+.RB [ \-f
+.IR file ]
+.RI [ field ...]
 .SH DESCRIPTION
 .B csv
 is a collection of Unix-style utilities for working with CSV files on a
@@ -74,6 +90,14 @@ Select and display specific fields (columns) from a CSV file by field name.
 .TP
 .B pick
 Select and display specific data rows by row number (1-indexed).
+.TP
+.B grep
+Select and display rows where one or more fields match a regular expression pattern.
+If no field is specified, all fields are searched.
+.TP
+.B sort
+Sort and display rows by one or more field values.
+If no field is specified, sorts by all fields in column order.
 .SH OPTIONS
 .SS Options for head and tail
 .TP
@@ -146,6 +170,40 @@ Specify the input file. Use
 .B \-
 to explicitly read from standard input. If not specified, reads from
 standard input.
+.SS Options for grep
+.TP
+.BR \-a ", " \-\-add\-header
+Include the header row in output. If the CSV file begins with comment
+lines (starting with #), these are also included.
+.TP
+.BR \-v ", " \-\-invert
+Invert the match. Select rows where the field does
+.I not
+match the pattern.
+.TP
+.BI \-f " file"
+Specify the input file. Use
+.B \-
+to explicitly read from standard input. If not specified, reads from
+standard input.
+.SS Options for sort
+.TP
+.BR \-a ", " \-\-add\-header
+Include the header row in output. If the CSV file begins with comment
+lines (starting with #), these are also included.
+.TP
+.BR \-n ", " \-\-numeric
+Sort numerically instead of alphabetically. Non-numeric values are
+treated as zero.
+.TP
+.BR \-r ", " \-\-reverse
+Sort in descending (reverse) order.
+.TP
+.BI \-f " file"
+Specify the input file. Use
+.B \-
+to explicitly read from standard input. If not specified, reads from
+standard input.
 .SH OPERANDS
 .TP
 .I file
@@ -170,6 +228,12 @@ For the
 command, one or more row numbers (1-indexed) to select from the CSV file.
 Rows are output in the order specified. Row 1 is the first data row
 (after the header).
+.TP
+.I regex
+For the
+.B grep
+command, a regular expression pattern to match against the specified field.
+Uses Python regular expression syntax.
 .SH STDIN
 When no file operand is specified (or when
 .B \-
@@ -307,6 +371,86 @@ Select rows from standard input:
 .RS
 .nf
 cat data.csv | csv pick 2 4 6
+.fi
+.RE
+.PP
+Select rows where name starts with A:
+.PP
+.RS
+.nf
+csv grep \-f data.csv "^A" name
+.fi
+.RE
+.PP
+Select rows with header where city contains "York":
+.PP
+.RS
+.nf
+csv grep \-a \-f data.csv "York" city
+.fi
+.RE
+.PP
+Select rows where status does NOT match "inactive":
+.PP
+.RS
+.nf
+csv grep \-v \-f data.csv "inactive" status
+.fi
+.RE
+.PP
+Search all fields for "error":
+.PP
+.RS
+.nf
+csv grep \-f data.csv "error"
+.fi
+.RE
+.PP
+Search multiple fields (name and city):
+.PP
+.RS
+.nf
+csv grep \-f data.csv "New" name city
+.fi
+.RE
+.PP
+Sort alphabetically by name:
+.PP
+.RS
+.nf
+csv sort \-f data.csv name
+.fi
+.RE
+.PP
+Sort numerically by age:
+.PP
+.RS
+.nf
+csv sort \-n \-f data.csv age
+.fi
+.RE
+.PP
+Sort by age descending with header:
+.PP
+.RS
+.nf
+csv sort \-a \-n \-r \-f data.csv age
+.fi
+.RE
+.PP
+Sort by multiple fields (city, then name):
+.PP
+.RS
+.nf
+csv sort \-f data.csv city name
+.fi
+.RE
+.PP
+Sort by all fields in column order:
+.PP
+.RS
+.nf
+csv sort \-f data.csv
 .fi
 .RE
 .PP

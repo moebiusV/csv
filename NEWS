@@ -7,10 +7,24 @@ Version 1.2.0 (December 2025)
     - Use -a to include header (and comments) in output
     - Supports stdin input when -f is not specified
 
+  * New command: csv grep [-a] [-v] [-f file] regex [field ...]
+    - Select rows where field(s) match a regular expression
+    - If no field specified, searches all fields
+    - Multiple fields can be specified
+    - Use -v to invert match (select non-matching rows)
+    - Use -a to include header (and comments) in output
+
+  * New command: csv sort [-a] [-n] [-r] [-f file] [field ...]
+    - Sort rows by one or more field values
+    - If no field specified, sorts by all fields in column order
+    - Use -n for numeric sort (default is alphabetical)
+    - Use -r for descending order
+    - Use -a to include header (and comments) in output
+
   * Changed wc output format to "Rows: N  Columns: N  Bytes: N"
 
   * The -a flag now consistently includes comment lines with the header
-    across all commands (head, tail, wc, cut, pick)
+    across all commands (head, tail, wc, cut, pick, grep, sort)
 
   * Added --version (-V) option to display version information
 

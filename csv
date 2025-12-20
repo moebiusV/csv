@@ -6,7 +6,9 @@ Usage:
     csv tail [-N|+N] [-a] [file]
     csv wc [-l] [-w] [-c] [file]
     csv cut [-a] [-f <file>] field1 field2 ...
-    csv pick [-f <file>] row1 row2 ...
+    csv pick [-a] [-f <file>] row1 row2 ...
+    csv grep [-a] [-v] [-f <file>] regex field
+    csv sort [-a] [-n] [-r] [-f <file>] field1 [field2 ...]
     
 When no filename is given (or '-' is used), reads from stdin.
 
@@ -20,7 +22,17 @@ For tail:
 
 For pick:
     Select specific data rows by number (1-indexed)
-    Header is always preserved in output
+
+For grep:
+    Select rows where field matches regex pattern
+    -v  Invert match (select non-matching rows)
+    If no field specified, searches all fields
+
+For sort:
+    Sort rows by one or more fields
+    -n  Numeric sort (instead of alphabetical)
+    -r  Reverse (descending) order
+    If no field specified, sorts by all fields in order
 
 Examples:
     csv head -5 myfile.csv              # First 5 data rows
@@ -35,6 +47,16 @@ Examples:
     csv pick -f data.csv 1 3 5          # Select rows 1, 3, and 5
     csv pick -a -f data.csv 1 3 5       # Same, with header
     cat data.csv | csv pick 2 4         # Select rows 2 and 4 from stdin
+    csv grep -f data.csv "^A" name      # Rows where name starts with A
+    csv grep -a -f data.csv "NYC" city  # Same, with header
+    csv grep -v -f data.csv "test" name # Rows where name doesn't match test
+    csv grep -f data.csv "error"        # Search all fields for "error"
+    csv grep -f data.csv "A" name city  # Search name and city fields
+    csv sort -f data.csv name           # Sort alphabetically by name
+    csv sort -n -f data.csv age         # Sort numerically by age
+    csv sort -a -r -f data.csv age      # Sort descending with header
+    csv sort -f data.csv city name      # Sort by city, then by name
+    csv sort -f data.csv                # Sort by all fields in order
 """
 
 VERSION = "1.2.0"
@@ -353,6 +375,126 @@ def csv_pick(filename, row_numbers, with_header=False):
         writer.writerow(rows[row_num])  # row_num maps directly since header is rows[0]
 
 
+def csv_grep(filename, pattern, field_names=None, with_header=False, invert=False):
+    """Select rows where a field matches a regex pattern.
+    
+    By default, outputs only matching data rows. Use with_header=True
+    to include the header row (and any comment lines) in output.
+    Use invert=True to select non-matching rows.
+    If field_names is None or empty, search all fields.
+    """
+    import re
+    
+    try:
+        regex = re.compile(pattern)
+    except re.error as e:
+        print(f"csv grep: invalid regex '{pattern}': {e}", file=sys.stderr)
+        sys.exit(1)
+    
+    comment_lines, rows = read_csv_rows(filename)
+    
+    if not rows:
+        return
+    
+    header = rows[0]
+    
+    # Find field indices (or use all if none specified)
+    if field_names:
+        indices = []
+        for name in field_names:
+            try:
+                indices.append(header.index(name))
+            except ValueError:
+                print(f"csv grep: unknown field: {name}", file=sys.stderr)
+                print(f"Available fields: {', '.join(header)}", file=sys.stderr)
+                sys.exit(1)
+    else:
+        # Search all fields
+        indices = list(range(len(header)))
+    
+    # Output comments and header only if -a flag
+    if with_header:
+        if comment_lines:
+            for line in comment_lines:
+                print(line)
+        writer = csv.writer(sys.stdout)
+        writer.writerow(header)
+    else:
+        writer = csv.writer(sys.stdout)
+    
+    # Output matching data rows
+    for row in rows[1:]:
+        match_found = False
+        for idx in indices:
+            field_value = row[idx] if idx < len(row) else ''
+            if regex.search(field_value):
+                match_found = True
+                break
+        if (match_found and not invert) or (not match_found and invert):
+            writer.writerow(row)
+
+
+def csv_sort(filename, field_names=None, with_header=False, numeric=False, reverse=False):
+    """Sort rows by one or more fields.
+    
+    By default, sorts alphabetically. Use numeric=True for numeric sort.
+    Use reverse=True for descending order.
+    If field_names is None or empty, sort by all fields in order.
+    """
+    comment_lines, rows = read_csv_rows(filename)
+    
+    if not rows:
+        return
+    
+    header = rows[0]
+    
+    # Find field indices (or use all if none specified)
+    if field_names:
+        indices = []
+        for name in field_names:
+            try:
+                indices.append(header.index(name))
+            except ValueError:
+                print(f"csv sort: unknown field: {name}", file=sys.stderr)
+                print(f"Available fields: {', '.join(header)}", file=sys.stderr)
+                sys.exit(1)
+    else:
+        # Sort by all fields in order
+        indices = list(range(len(header)))
+    
+    # Create sort key function
+    def sort_key(row):
+        values = []
+        for idx in indices:
+            val = row[idx] if idx < len(row) else ''
+            if numeric:
+                try:
+                    # Try to parse as float for numeric comparison
+                    val = float(val) if val else 0.0
+                except ValueError:
+                    val = 0.0
+            values.append(val)
+        return values
+    
+    # Sort data rows (exclude header)
+    data_rows = rows[1:]
+    sorted_rows = sorted(data_rows, key=sort_key, reverse=reverse)
+    
+    # Output comments and header only if -a flag
+    if with_header:
+        if comment_lines:
+            for line in comment_lines:
+                print(line)
+        writer = csv.writer(sys.stdout)
+        writer.writerow(header)
+    else:
+        writer = csv.writer(sys.stdout)
+    
+    # Output sorted rows
+    for row in sorted_rows:
+        writer.writerow(row)
+
+
 def parse_wc_options(args):
     """Parse wc options and return (show_rows, show_columns, show_bytes, remaining_args)."""
     show_rows = False
@@ -415,13 +557,15 @@ def parse_file_option(args):
 
 def main():
     if len(sys.argv) < 2:
-        print("usage: csv {head,tail,wc,cut,pick} [options] [file|fields...]", file=sys.stderr)
+        print("usage: csv {head,tail,wc,cut,pick,grep,sort} [options] [file|fields...]", file=sys.stderr)
         print("\nCommands:", file=sys.stderr)
         print("  head    Show first n rows of CSV file", file=sys.stderr)
         print("  tail    Show last n rows of CSV file", file=sys.stderr)
         print("  wc      Count rows, columns, and bytes", file=sys.stderr)
         print("  cut     Select specific fields from CSV", file=sys.stderr)
         print("  pick    Select specific rows by number", file=sys.stderr)
+        print("  grep    Select rows matching a regex", file=sys.stderr)
+        print("  sort    Sort rows by field values", file=sys.stderr)
         print("\nUse 'csv <command> --help' for more information on a command.", file=sys.stderr)
         print("\nWhen no file is specified, reads from stdin. Use '-' for explicit stdin.", file=sys.stderr)
         sys.exit(1)
@@ -436,7 +580,7 @@ def main():
     
     # Check for help
     if command in ['-h', '--help'] or '--help' in args:
-        print("usage: csv {head,tail,wc,cut,pick} [options] [file|fields...]")
+        print("usage: csv {head,tail,wc,cut,pick,grep,sort} [options] [file|fields...]")
         print("\nCSV utility - Unix-style commands for CSV files")
         print(f"Version {VERSION}")
         print("\nCommands:")
@@ -445,6 +589,8 @@ def main():
         print("  wc      Count rows, columns, and bytes")
         print("  cut     Select specific fields")
         print("  pick    Select specific rows by number")
+        print("  grep    Select rows matching a regex")
+        print("  sort    Sort rows by field values")
         print("\nFor head/tail:")
         print("  csv head [-N] [-a] [file]    Show first N data rows (default: 10)")
         print("  csv head [+N] [-a] [file]    Show all but last N data rows")
@@ -468,6 +614,21 @@ def main():
         print("  -a, --add-header  Include header row (and comments) in output")
         print("  -f <file>         Specify input file (default: stdin)")
         print("  Selects specific data rows by number (1-indexed)")
+        print("\nFor grep:")
+        print("  csv grep [-a] [-v] [-f <file>] regex [field ...]")
+        print("  -a, --add-header  Include header row (and comments) in output")
+        print("  -v, --invert      Select non-matching rows")
+        print("  -f <file>         Specify input file (default: stdin)")
+        print("  Selects rows where field(s) match the regex pattern")
+        print("  If no field specified, searches all fields")
+        print("\nFor sort:")
+        print("  csv sort [-a] [-n] [-r] [-f <file>] [field ...]")
+        print("  -a, --add-header  Include header row (and comments) in output")
+        print("  -n, --numeric     Sort numerically instead of alphabetically")
+        print("  -r, --reverse     Sort in descending order")
+        print("  -f <file>         Specify input file (default: stdin)")
+        print("  Sorts rows by the specified field(s)")
+        print("  If no field specified, sorts by all fields in order")
         sys.exit(0)
     
     if command == 'head':
@@ -583,9 +744,63 @@ def main():
         
         csv_pick(filename, row_numbers, with_header)
     
+    elif command == 'grep':
+        # Parse grep arguments
+        filename, remaining = parse_file_option(args)
+        
+        # Check for -a and -v flags, then get regex and field(s)
+        with_header = False
+        invert = False
+        positional = []
+        for arg in remaining:
+            if arg == '-a' or arg == '--add-header':
+                with_header = True
+            elif arg == '-v' or arg == '--invert':
+                invert = True
+            elif arg.startswith('-') and arg != '-':
+                print(f"csv grep: invalid option -- '{arg}'", file=sys.stderr)
+                sys.exit(1)
+            else:
+                positional.append(arg)
+        
+        if len(positional) < 1:
+            print("csv grep: requires regex pattern", file=sys.stderr)
+            print("usage: csv grep [-a] [-v] [-f <file>] regex [field ...]", file=sys.stderr)
+            sys.exit(1)
+        
+        pattern = positional[0]
+        field_names = positional[1:] if len(positional) > 1 else None
+        
+        csv_grep(filename, pattern, field_names, with_header, invert)
+    
+    elif command == 'sort':
+        # Parse sort arguments
+        filename, remaining = parse_file_option(args)
+        
+        # Check for flags and get field names
+        with_header = False
+        numeric = False
+        reverse = False
+        field_names = []
+        for arg in remaining:
+            if arg == '-a' or arg == '--add-header':
+                with_header = True
+            elif arg == '-n' or arg == '--numeric':
+                numeric = True
+            elif arg == '-r' or arg == '--reverse':
+                reverse = True
+            elif arg.startswith('-') and arg != '-':
+                print(f"csv sort: invalid option -- '{arg}'", file=sys.stderr)
+                sys.exit(1)
+            else:
+                field_names.append(arg)
+        
+        # None means sort by all fields
+        csv_sort(filename, field_names if field_names else None, with_header, numeric, reverse)
+    
     else:
         print(f"csv: unknown command '{command}'", file=sys.stderr)
-        print("usage: csv {head,tail,wc,cut,pick} [options] [file|fields...]", file=sys.stderr)
+        print("usage: csv {head,tail,wc,cut,pick,grep,sort} [options] [file|fields...]", file=sys.stderr)
         sys.exit(1)
 
 

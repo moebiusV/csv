@@ -8,19 +8,26 @@ with quoted fields that may contain newlines or commas.
 Commands
 --------
 
-  csv head [-N|+N] [-a] [file]     Show first N data rows (default: 10)
-                                   +N shows all but last N rows
-  csv tail [-N|+N] [-a] [file]     Show last N data rows (default: 10)
-                                   +N starts from row N to end
-  csv wc [-l] [-w] [-c] [-a] [file]  Count rows, columns, and bytes
-  csv cut [-a] [-f file] field...  Select specific columns by name
-  csv pick [-a] [-f file] row...   Select specific rows by number
+  csv head [-N|+N] [-a] [file]        Show first N data rows (default: 10)
+                                      +N shows all but last N rows
+  csv tail [-N|+N] [-a] [file]        Show last N data rows (default: 10)
+                                      +N starts from row N to end
+  csv wc [-l] [-w] [-c] [-a] [file]   Count rows, columns, and bytes
+  csv cut [-a] [-f file] field...     Select specific columns by name
+  csv pick [-a] [-f file] row...      Select specific rows by number
+  csv grep [-a] [-v] [-f file] regex [field...]
+                                      Select rows matching a regex
+  csv sort [-a] [-n] [-r] [-f file] [field...]
+                                      Sort rows by field values
 
 Options
 -------
 
   -a, --add-header    Include header row (and comments) in output
-  -f <file>           Specify input file (for cut and pick)
+  -f <file>           Specify input file (for cut, pick, grep, sort)
+  -v, --invert        Invert match (for grep)
+  -n, --numeric       Numeric sort (for sort)
+  -r, --reverse       Reverse/descending order (for sort)
   -l                  Count rows only (wc)
   -w                  Count columns only (wc)
   -c                  Count bytes only (wc)
@@ -43,6 +50,16 @@ Examples
   csv pick -f data.csv 1 3 5        Select rows 1, 3, and 5
   csv pick -a -f data.csv 1 3 5     Same, with header
   cat data.csv | csv pick 2 4       Select rows from stdin
+  csv grep -f data.csv "^A" name    Rows where name starts with A
+  csv grep -a -f data.csv "NY" city Same, with header
+  csv grep -v -f data.csv "test" x  Rows where x doesn't match "test"
+  csv grep -f data.csv "error"      Search all fields for "error"
+  csv grep -f data.csv "A" name city  Search in name and city fields
+  csv sort -f data.csv name         Sort alphabetically by name
+  csv sort -n -f data.csv age       Sort numerically by age
+  csv sort -a -n -r -f data.csv age Sort descending with header
+  csv sort -f data.csv city name    Sort by city, then by name
+  csv sort -f data.csv              Sort by all fields in order
 
 Installation
 ------------

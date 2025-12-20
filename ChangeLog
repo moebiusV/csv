@@ -8,13 +8,29 @@
 	- Use -a to include header and comments in output
 	- Supports stdin when -f not specified
 
+	* csv: Added 'grep' subcommand for selecting rows by regex match
+	- Syntax: csv grep [-a] [-v] [-f file] regex [field ...]
+	- Selects rows where field(s) match regex pattern
+	- If no field specified, searches all fields
+	- Multiple fields can be specified
+	- Use -v to invert match (select non-matching rows)
+	- Use -a to include header and comments in output
+
+	* csv: Added 'sort' subcommand for sorting rows by field values
+	- Syntax: csv sort [-a] [-n] [-r] [-f file] [field ...]
+	- Sorts by one or more fields
+	- If no field specified, sorts by all fields in column order
+	- Use -n for numeric sort (default is alphabetical)
+	- Use -r for descending order
+	- Use -a to include header and comments in output
+
 	* csv: Changed wc output format to "Rows: N  Columns: N  Bytes: N"
 
 	* csv: The -a flag now includes comment lines in wc row count
 
 	* csv: Added --version (-V) option
 
-	* csv.1: Updated man page with pick command and wc output format
+	* csv.1: Updated man page with pick, grep, and sort commands
 
 	* README, NEWS: Updated documentation
 
