@@ -88,11 +88,24 @@ def get_input_source(filename):
             sys.exit(1)
 
 
+def detect_delimiter(sample):
+    """Detect the delimiter used in a CSV sample.
+    
+    Returns the detected delimiter or ',' as default.
+    """
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=',\t|;:')
+        return dialect.delimiter
+    except csv.Error:
+        return ','
+
+
 def read_csv_rows(filename):
     """Read all rows from a CSV file or stdin.
     
-    Returns (comment_lines, rows) where comment_lines are lines starting with #
-    at the very beginning of the file, and rows are the parsed CSV rows.
+    Returns (comment_lines, rows, delimiter) where comment_lines are lines 
+    starting with # at the very beginning of the file, rows are the parsed 
+    CSV rows, and delimiter is the detected delimiter character.
     """
     source = get_input_source(filename)
     try:
@@ -111,25 +124,29 @@ def read_csv_rows(filename):
             else:
                 break
         
-        # Parse remaining content as CSV
+        # Parse remaining content as CSV with delimiter detection
         remaining_content = ''.join(lines[data_start:])
+        
+        # Detect delimiter from the first few lines of actual data
+        delimiter = detect_delimiter(remaining_content[:4096])
+        
         rows = []
-        reader = csv.reader(remaining_content.splitlines())
+        reader = csv.reader(remaining_content.splitlines(), delimiter=delimiter)
         for row in reader:
             rows.append(row)
         
-        return comment_lines, rows
+        return comment_lines, rows, delimiter
     finally:
         if filename is not None and filename != '-':
             source.close()
 
 
-def write_csv_rows(rows, comment_lines=None):
+def write_csv_rows(rows, comment_lines=None, delimiter=','):
     """Write CSV rows to stdout, optionally with leading comment lines."""
     if comment_lines:
         for line in comment_lines:
             print(line)
-    writer = csv.writer(sys.stdout)
+    writer = csv.writer(sys.stdout, delimiter=delimiter)
     for row in rows:
         writer.writerow(row)
 
@@ -138,8 +155,9 @@ def csv_head(filename, n, with_header=False, from_start=False):
     """Show the first n rows of a CSV file (with header only if with_header is True).
     
     If from_start is True (triggered by +N), show all but the last N rows.
+    n=0 shows no data rows (useful with -a to show just headers).
     """
-    comment_lines, rows = read_csv_rows(filename)
+    comment_lines, rows, delimiter = read_csv_rows(filename)
     
     if not rows:
         return
@@ -148,7 +166,7 @@ def csv_head(filename, n, with_header=False, from_start=False):
         # +N means show all but the last N data rows
         if with_header:
             if len(rows) <= 1:
-                write_csv_rows(rows, comment_lines)
+                write_csv_rows(rows, comment_lines, delimiter)
             else:
                 header = [rows[0]]
                 data_rows = rows[1:]
@@ -156,7 +174,7 @@ def csv_head(filename, n, with_header=False, from_start=False):
                     data_rows = data_rows[:-n]
                 else:
                     data_rows = []
-                write_csv_rows(header + data_rows, comment_lines)
+                write_csv_rows(header + data_rows, comment_lines, delimiter)
         else:
             if len(rows) > 1:
                 data_rows = rows[1:]
@@ -164,22 +182,18 @@ def csv_head(filename, n, with_header=False, from_start=False):
                     data_rows = data_rows[:-n]
                 else:
                     data_rows = []
-                write_csv_rows(data_rows)
+                write_csv_rows(data_rows, None, delimiter)
     else:
         # Normal behavior: show first N rows
         if with_header:
             # Include comments, header (first row), plus first n data rows
-            if len(rows) <= 1:
-                write_csv_rows(rows, comment_lines)
-            else:
-                header = [rows[0]]
-                data_rows = rows[1:n+1]
-                write_csv_rows(header + data_rows, comment_lines)
+            header = [rows[0]]
+            data_rows = rows[1:n+1] if n > 0 else []
+            write_csv_rows(header + data_rows, comment_lines, delimiter)
         else:
             # Skip header, just show first n data rows
-            if len(rows) > 1:
-                data_rows = rows[1:n+1]
-                write_csv_rows(data_rows)
+            data_rows = rows[1:n+1] if n > 0 and len(rows) > 1 else []
+            write_csv_rows(data_rows, None, delimiter)
 
 
 def csv_tail(filename, n, with_header=False, from_start=False):
@@ -188,7 +202,7 @@ def csv_tail(filename, n, with_header=False, from_start=False):
     If from_start is True (triggered by +N), start from row N and print to end.
     Row numbering starts at 1, so +1 means all rows, +2 skips first data row, etc.
     """
-    comment_lines, rows = read_csv_rows(filename)
+    comment_lines, rows, delimiter = read_csv_rows(filename)
     
     if not rows:
         return
@@ -199,7 +213,7 @@ def csv_tail(filename, n, with_header=False, from_start=False):
         start_idx = n - 1  # Convert to 0-indexed
         if with_header:
             if len(rows) <= 1:
-                write_csv_rows(rows, comment_lines)
+                write_csv_rows(rows, comment_lines, delimiter)
             else:
                 header = [rows[0]]
                 data_rows = rows[1:]
@@ -207,7 +221,7 @@ def csv_tail(filename, n, with_header=False, from_start=False):
                     data_rows = data_rows[start_idx:]
                 else:
                     data_rows = []
-                write_csv_rows(header + data_rows, comment_lines)
+                write_csv_rows(header + data_rows, comment_lines, delimiter)
         else:
             if len(rows) > 1:
                 data_rows = rows[1:]
@@ -215,21 +229,31 @@ def csv_tail(filename, n, with_header=False, from_start=False):
                     data_rows = data_rows[start_idx:]
                 else:
                     data_rows = []
-                write_csv_rows(data_rows)
+                write_csv_rows(data_rows, None, delimiter)
     else:
         # Normal behavior: show last N rows
         if with_header:
             # Include comments, header (first row), plus last n data rows
             if len(rows) <= 1:
-                write_csv_rows(rows, comment_lines)
+                write_csv_rows(rows, comment_lines, delimiter)
             else:
                 header = [rows[0]]
-                data_rows = rows[-n:] if n < len(rows) else rows[1:]
-                write_csv_rows(header + data_rows, comment_lines)
+                if n == 0:
+                    data_rows = []
+                elif n < len(rows) - 1:
+                    data_rows = rows[-n:]
+                else:
+                    data_rows = rows[1:]
+                write_csv_rows(header + data_rows, comment_lines, delimiter)
         else:
             # Skip header, just show last n data rows
-            data_rows = rows[-n:] if len(rows) > 1 and n < len(rows) else rows[1:]
-            write_csv_rows(data_rows)
+            if n == 0:
+                data_rows = []
+            elif len(rows) > 1 and n < len(rows) - 1:
+                data_rows = rows[-n:]
+            else:
+                data_rows = rows[1:] if len(rows) > 1 else []
+            write_csv_rows(data_rows, None, delimiter)
 
 
 def csv_wc(filename, show_rows=True, show_columns=True, show_bytes=True, with_header=False):
@@ -275,7 +299,11 @@ def csv_wc(filename, show_rows=True, show_columns=True, show_bytes=True, with_he
                 break
         
         remaining_content = ''.join(lines[data_start:])
-        rows = list(csv.reader(remaining_content.splitlines()))
+        
+        # Detect delimiter
+        delimiter = detect_delimiter(remaining_content[:4096])
+        
+        rows = list(csv.reader(remaining_content.splitlines(), delimiter=delimiter))
         
         # Count columns from header (first row)
         num_columns = len(rows[0]) if rows else 0
@@ -308,7 +336,7 @@ def csv_cut(filename, field_names, with_header=False, exclude=False):
     
     If exclude=True, select all fields EXCEPT the specified ones.
     """
-    comment_lines, rows = read_csv_rows(filename)
+    comment_lines, rows, delimiter = read_csv_rows(filename)
     
     if not rows:
         return
@@ -344,7 +372,7 @@ def csv_cut(filename, field_names, with_header=False, exclude=False):
             print(line)
     
     # Output header with selected fields only if -a flag
-    writer = csv.writer(sys.stdout)
+    writer = csv.writer(sys.stdout, delimiter=delimiter)
     if with_header:
         writer.writerow([header[i] for i in indices])
     
@@ -365,7 +393,7 @@ def csv_pick(filename, row_numbers, with_header=False):
     By default, outputs only the selected data rows. Use with_header=True
     to include the header row (and any comment lines) in output.
     """
-    comment_lines, rows = read_csv_rows(filename)
+    comment_lines, rows, delimiter = read_csv_rows(filename)
     
     if not rows:
         return
@@ -377,10 +405,10 @@ def csv_pick(filename, row_numbers, with_header=False):
         if comment_lines:
             for line in comment_lines:
                 print(line)
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, delimiter=delimiter)
         writer.writerow(rows[0])  # Header
     else:
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, delimiter=delimiter)
     
     # Output selected data rows
     for row_num in row_numbers:
@@ -409,7 +437,7 @@ def csv_grep(filename, pattern, field_names=None, with_header=False, invert=Fals
         print(f"csv grep: invalid regex '{pattern}': {e}", file=sys.stderr)
         sys.exit(1)
     
-    comment_lines, rows = read_csv_rows(filename)
+    comment_lines, rows, delimiter = read_csv_rows(filename)
     
     if not rows:
         return
@@ -435,10 +463,10 @@ def csv_grep(filename, pattern, field_names=None, with_header=False, invert=Fals
         if comment_lines:
             for line in comment_lines:
                 print(line)
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, delimiter=delimiter)
         writer.writerow(header)
     else:
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, delimiter=delimiter)
     
     # Output matching data rows
     for row in rows[1:]:
@@ -459,7 +487,7 @@ def csv_sort(filename, field_names=None, with_header=False, numeric=False, rever
     Use reverse=True for descending order.
     If field_names is None or empty, sort by all fields in order.
     """
-    comment_lines, rows = read_csv_rows(filename)
+    comment_lines, rows, delimiter = read_csv_rows(filename)
     
     if not rows:
         return
@@ -503,10 +531,10 @@ def csv_sort(filename, field_names=None, with_header=False, numeric=False, rever
         if comment_lines:
             for line in comment_lines:
                 print(line)
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, delimiter=delimiter)
         writer.writerow(header)
     else:
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, delimiter=delimiter)
     
     # Output sorted rows
     for row in sorted_rows:

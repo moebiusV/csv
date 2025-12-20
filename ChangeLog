@@ -28,6 +28,14 @@
 	- Exclude specified fields instead of selecting them
 	- csv cut -x -f file.csv field1 outputs all fields except field1
 
+	* csv: Added delimiter autodetection
+	- Automatically detects comma, tab, pipe, semicolon, colon delimiters
+	- Uses Python's csv.Sniffer on first 4KB of data
+	- Output preserves the detected delimiter
+
+	* csv: head and tail now accept -0 for zero data rows
+	- Useful with -a to show just headers: csv head -0 -a file.csv
+
 	* csv: Changed wc output format to "Rows: N  Columns: N  Bytes: N"
 
 	* csv: The -a flag now includes comment lines in wc row count

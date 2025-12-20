@@ -25,6 +25,13 @@ Version 1.2.0 (December 2025)
     - Exclude specified fields instead of selecting them
     - csv cut -x -f file.csv field1 field2 outputs all fields except those listed
 
+  * Added delimiter autodetection
+    - Automatically detects comma, tab, pipe, semicolon, and colon delimiters
+    - Output preserves the detected delimiter
+
+  * head and tail now accept -0 to show zero data rows
+    - Useful with -a to show just headers/comments: csv head -0 -a file.csv
+
   * Changed wc output format to "Rows: N  Columns: N  Bytes: N"
 
   * The -a flag now consistently includes comment lines with the header

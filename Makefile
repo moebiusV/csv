@@ -26,7 +26,7 @@ DESTDIR ?=
 # Source files
 SCRIPT = csv
 MANPAGE = csv.1
-DOCS = README NEWS ChangeLog COPYING AUTHORS
+DOCS = README README.md NEWS ChangeLog COPYING AUTHORS
 
 .PHONY: all install install-bin install-man install-doc uninstall dist clean help
 
