@@ -21,6 +21,10 @@ Version 1.2.0 (December 2025)
     - Use -r for descending order
     - Use -a to include header (and comments) in output
 
+  * Added -x/--exclude option to csv cut
+    - Exclude specified fields instead of selecting them
+    - csv cut -x -f file.csv field1 field2 outputs all fields except those listed
+
   * Changed wc output format to "Rows: N  Columns: N  Bytes: N"
 
   * The -a flag now consistently includes comment lines with the header

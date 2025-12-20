@@ -20,6 +20,7 @@ csv \- Unix-style commands for CSV files
 .br
 .B csv cut
 .RB [ \-a ]
+.RB [ \-x ]
 .RB [ \-f
 .IR file ]
 .I field
@@ -153,6 +154,10 @@ If no options are specified, all three counts are displayed.
 .BR \-a ", " \-\-add\-header
 Include the header row in output. If the CSV file begins with comment
 lines (starting with #), these are also included.
+.TP
+.BR \-x ", " \-\-exclude
+Exclude the specified fields instead of selecting them. All fields
+except those listed will be output.
 .TP
 .BI \-f " file"
 Specify the input file. Use
@@ -339,6 +344,14 @@ Select columns from standard input:
 .RS
 .nf
 cat data.csv | csv cut name email
+.fi
+.RE
+.PP
+Exclude specific columns (select all except these):
+.PP
+.RS
+.nf
+csv cut \-x \-f data.csv password ssn
 .fi
 .RE
 .PP

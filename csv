@@ -5,10 +5,10 @@ Usage:
     csv head [-N|+N] [-a] [file]
     csv tail [-N|+N] [-a] [file]
     csv wc [-l] [-w] [-c] [file]
-    csv cut [-a] [-f <file>] field1 field2 ...
+    csv cut [-a] [-x] [-f <file>] field1 field2 ...
     csv pick [-a] [-f <file>] row1 row2 ...
-    csv grep [-a] [-v] [-f <file>] regex field
-    csv sort [-a] [-n] [-r] [-f <file>] field1 [field2 ...]
+    csv grep [-a] [-v] [-f <file>] regex [field ...]
+    csv sort [-a] [-n] [-r] [-f <file>] [field ...]
     
 When no filename is given (or '-' is used), reads from stdin.
 
@@ -43,6 +43,7 @@ Examples:
     cat myfile.csv | csv head -1        # First row from stdin
     csv cut -f myfile.csv name age      # Select 'name' and 'age' columns
     csv cut -a -f myfile.csv name age   # Same, with header
+    csv cut -x -f myfile.csv age        # All columns except 'age'
     cat data.csv | csv cut name age     # Select columns from stdin
     csv pick -f data.csv 1 3 5          # Select rows 1, 3, and 5
     csv pick -a -f data.csv 1 3 5       # Same, with header
@@ -302,8 +303,11 @@ def csv_wc(filename, show_rows=True, show_columns=True, show_bytes=True, with_he
             source.close()
 
 
-def csv_cut(filename, field_names, with_header=False):
-    """Select specific fields from a CSV file by name."""
+def csv_cut(filename, field_names, with_header=False, exclude=False):
+    """Select specific fields from a CSV file by name.
+    
+    If exclude=True, select all fields EXCEPT the specified ones.
+    """
     comment_lines, rows = read_csv_rows(filename)
     
     if not rows:
@@ -311,14 +315,28 @@ def csv_cut(filename, field_names, with_header=False):
     
     # Get header and find column indices
     header = rows[0]
-    indices = []
-    for name in field_names:
-        try:
-            indices.append(header.index(name))
-        except ValueError:
-            print(f"csv cut: unknown field: {name}", file=sys.stderr)
-            print(f"Available fields: {', '.join(header)}", file=sys.stderr)
-            sys.exit(1)
+    
+    if exclude:
+        # Find indices of fields to EXCLUDE, then use the rest
+        exclude_indices = set()
+        for name in field_names:
+            try:
+                exclude_indices.add(header.index(name))
+            except ValueError:
+                print(f"csv cut: unknown field: {name}", file=sys.stderr)
+                print(f"Available fields: {', '.join(header)}", file=sys.stderr)
+                sys.exit(1)
+        indices = [i for i in range(len(header)) if i not in exclude_indices]
+    else:
+        # Find indices of fields to INCLUDE
+        indices = []
+        for name in field_names:
+            try:
+                indices.append(header.index(name))
+            except ValueError:
+                print(f"csv cut: unknown field: {name}", file=sys.stderr)
+                print(f"Available fields: {', '.join(header)}", file=sys.stderr)
+                sys.exit(1)
     
     # Output comment lines first (as part of header) only if -a flag
     if with_header and comment_lines:
@@ -605,8 +623,9 @@ def main():
         print("  -a, --add-header  Include header (and comments) in row count")
         print("  (default: show all three counts, exclude header from row count)")
         print("\nFor cut:")
-        print("  csv cut [-a] [-f <file>] field1 field2 ...")
+        print("  csv cut [-a] [-x] [-f <file>] field1 field2 ...")
         print("  -a, --add-header  Include header row (and comments) in output")
+        print("  -x, --exclude     Exclude specified fields instead of selecting them")
         print("  -f <file>         Specify input file (default: stdin)")
         print("  Selects and outputs specified fields from the CSV")
         print("\nFor pick:")
@@ -702,21 +721,27 @@ def main():
         # Parse cut arguments
         filename, remaining = parse_file_option(args)
         
-        # Check for -a flag
+        # Check for -a and -x flags
         with_header = False
+        exclude = False
         field_names = []
         for arg in remaining:
             if arg == '-a' or arg == '--add-header':
                 with_header = True
+            elif arg == '-x' or arg == '--exclude':
+                exclude = True
+            elif arg.startswith('-') and arg != '-':
+                print(f"csv cut: invalid option -- '{arg}'", file=sys.stderr)
+                sys.exit(1)
             else:
                 field_names.append(arg)
         
         if not field_names:
             print("csv cut: no fields specified", file=sys.stderr)
-            print("usage: csv cut [-a] [-f <file>] field1 field2 ...", file=sys.stderr)
+            print("usage: csv cut [-a] [-x] [-f <file>] field1 field2 ...", file=sys.stderr)
             sys.exit(1)
         
-        csv_cut(filename, field_names, with_header)
+        csv_cut(filename, field_names, with_header, exclude)
     
     elif command == 'pick':
         # Parse pick arguments

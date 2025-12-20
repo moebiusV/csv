@@ -13,7 +13,7 @@ Commands
   csv tail [-N|+N] [-a] [file]        Show last N data rows (default: 10)
                                       +N starts from row N to end
   csv wc [-l] [-w] [-c] [-a] [file]   Count rows, columns, and bytes
-  csv cut [-a] [-f file] field...     Select specific columns by name
+  csv cut [-a] [-x] [-f file] field... Select specific columns by name
   csv pick [-a] [-f file] row...      Select specific rows by number
   csv grep [-a] [-v] [-f file] regex [field...]
                                       Select rows matching a regex
@@ -25,6 +25,7 @@ Options
 
   -a, --add-header    Include header row (and comments) in output
   -f <file>           Specify input file (for cut, pick, grep, sort)
+  -x, --exclude       Exclude fields instead of selecting (for cut)
   -v, --invert        Invert match (for grep)
   -n, --numeric       Numeric sort (for sort)
   -r, --reverse       Reverse/descending order (for sort)
@@ -47,6 +48,7 @@ Examples
   csv wc -l data.csv                Count data rows only
   csv cut -f data.csv name email    Select name and email columns
   csv cut -a -f data.csv name       Same, with header included
+  csv cut -x -f data.csv password   All columns except password
   csv pick -f data.csv 1 3 5        Select rows 1, 3, and 5
   csv pick -a -f data.csv 1 3 5     Same, with header
   cat data.csv | csv pick 2 4       Select rows from stdin

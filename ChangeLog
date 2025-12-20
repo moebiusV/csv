@@ -24,6 +24,10 @@
 	- Use -r for descending order
 	- Use -a to include header and comments in output
 
+	* csv: Added -x/--exclude option to cut subcommand
+	- Exclude specified fields instead of selecting them
+	- csv cut -x -f file.csv field1 outputs all fields except field1
+
 	* csv: Changed wc output format to "Rows: N  Columns: N  Bytes: N"
 
 	* csv: The -a flag now includes comment lines in wc row count
