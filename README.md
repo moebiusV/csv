@@ -70,31 +70,31 @@ csv head -10 -a data.csv
 csv head -0 -a data.csv
 
 # All columns except junk ones
-csv cut -a -x password temp_id data.csv
+csv cut -a -x -f data.csv password temp_id
 
 # Filter rows where name starts with "A"
-csv grep "^A" name data.csv
+csv grep -f data.csv "^A" name
 
 # Filter with AND (via pipe)
-csv grep "^A" name data.csv | csv grep "York" city
+csv grep -f data.csv "^A" name | csv grep "York" city
 
 # Search all fields for "error"
-csv grep "error" data.csv
+csv grep -f data.csv "error"
 
 # Multi-key sort (numeric descending)
-csv sort -a -n -r age city data.csv
+csv sort -a -n -r -f data.csv age city
 
 # Select specific rows
 csv pick -a -f data.csv 1 5 10
 
 # Pipeline: cut columns then show first 5
-csv cut -a name email data.csv | csv head -5 -a
+csv cut -a -f data.csv name email | csv head -5 -a
 
 # Works with tab-delimited files too
 csv head -5 -a data.tsv
 
 # Pipe-delimited? No problem
-csv cut -a name data.psv
+csv cut -a -f data.psv name
 ```
 
 ## Comparison to Other Tools
