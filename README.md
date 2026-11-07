@@ -1,5 +1,7 @@
 # csv - Unix-style CSV Processor
 
+[github.com/moebiusV/csv](https://github.com/moebiusV/csv) | `git clone https://github.com/moebiusV/csv`
+
 **csv** is a lightweight, single-binary command-line tool that brings familiar Unix classics like `head`, `tail`, `wc`, `cut`, `grep`, and `sort` to CSV files — but fully CSV-aware. It operates on *rows* and *fields* rather than raw lines, correctly handling quoted fields with embedded commas, newlines, and other real-world quirks.
 
 Written in pure Python (standard library only), it's fast to install and dependency-free.
