@@ -1,6 +1,6 @@
 # csv - Unix-style CSV Processor
 
-[Index: All Projects](https://moebiusv.github.io/) | [github.com/moebiusV/csv](https://github.com/moebiusV/csv) | `git clone https://github.com/moebiusV/csv`
+Index: [All Projects](https://moebiusv.github.io/) | Git Repository: [github.com/moebiusV/csv](https://github.com/moebiusV/csv) | `git clone https://github.com/moebiusV/csv`
 
 **csv** is a lightweight, single-binary command-line tool that brings familiar Unix classics like `head`, `tail`, `wc`, `cut`, `grep`, and `sort` to CSV files — but fully CSV-aware. It operates on *rows* and *fields* rather than raw lines, correctly handling quoted fields with embedded commas, newlines, and other real-world quirks.
 
