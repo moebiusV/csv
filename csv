@@ -136,6 +136,10 @@ def read_csv_rows(filename):
             rows.append(row)
         
         return comment_lines, rows, delimiter
+    except UnicodeDecodeError:
+        label = filename if filename not in (None, '-') else 'stdin'
+        print(f"csv: {label}: invalid UTF-8 input", file=sys.stderr)
+        sys.exit(1)
     finally:
         if filename is not None and filename != '-':
             source.close()
@@ -326,6 +330,9 @@ def csv_wc(filename, show_rows=True, show_columns=True, show_bytes=True, with_he
             output_parts.append(f"Bytes: {file_size}")
         
         print("  ".join(output_parts))
+    except UnicodeDecodeError:
+        print(f"csv: {display_name}: invalid UTF-8 input", file=sys.stderr)
+        sys.exit(1)
     finally:
         if filename is not None and filename != '-':
             source.close()
